@@ -3,12 +3,13 @@ import { getAuth, GoogleAuthProvider, GithubAuthProvider, OAuthProvider } from "
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "dummy",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "dummy",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "dummy",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "dummy",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "dummy",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "dummy"
+  apiKey: "AIzaSyCY-CT2FyQwM7CqipHcP_JH6yfMHFTkwLU",
+  authDomain: "nova-6eb74.firebaseapp.com",
+  projectId: "nova-6eb74",
+  storageBucket: "nova-6eb74.firebasestorage.app",
+  messagingSenderId: "151676798105",
+  appId: "1:151676798105:web:4b7ef3fc82855029326408",
+  measurementId: "G-HMFTHZDRXF"
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
