@@ -3,14 +3,28 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, updateDoc, doc, where } from "firebase/firestore";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { db, storage } from "../../../lib/firebase";
+
+const MEMBERS = [
+  { id: 1, name: "Nexus (You)", online: true },
+  { id: 2, name: "Cypher", online: true },
+  { id: 3, name: "Trinity", online: false },
+  { id: 4, name: "Neo", online: true },
+  { id: 5, name: "Morpheus", online: false },
+  { id: 6, name: "Architect", online: false },
+];
 
 export default function ServerWorkspace() {
   const { id } = useParams();
   const [messages, setMessages] = useState<any[]>([]);
   const [inputValue, setInputValue] = useState("");
-  const [starredIdeas, setStarredIdeas] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState("chat"); // chat or starred
+  const [activeTab, setActiveTab] = useState("general-chat"); // general-chat, nova-ai, resources, starred
   const [isBotTyping, setIsBotTyping] = useState(false);
+  
+  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
 
@@ -18,22 +32,83 @@ export default function ServerWorkspace() {
     endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isBotTyping]);
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return;
+  useEffect(() => {
+    if (!id) return;
 
-    const userMessage = {
-      id: Date.now(),
-      sender: "You",
+    let q;
+    if (activeTab === "starred") {
+      // Fetch only starred bot reports (from nova-ai channel for simplicity)
+      q = query(
+        collection(db, `servers/${id}/channels/nova-ai/messages`),
+        where("starred", "==", true),
+        orderBy("timestamp", "asc")
+      );
+    } else {
+      q = query(
+        collection(db, `servers/${id}/channels/${activeTab}/messages`),
+        orderBy("timestamp", "asc")
+      );
+    }
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMessages(msgs);
+    });
+
+    return () => unsubscribe();
+  }, [id, activeTab]);
+
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() && !fileToUpload) return;
+
+    const messageContent = inputValue;
+    setInputValue("");
+    let fileUrl = null;
+    let fileType = null;
+
+    if (fileToUpload) {
+      fileType = fileToUpload.type;
+      const storageRef = ref(storage, `servers/${id}/resources/${Date.now()}_${fileToUpload.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
+      
+      setFileToUpload(null);
+      setUploadProgress(1); // To show progress indicator locally if needed
+
+      await new Promise<void>((resolve, reject) => {
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(progress);
+          },
+          (error) => {
+            console.error("Upload failed", error);
+            reject(error);
+          },
+          async () => {
+            fileUrl = await getDownloadURL(uploadTask.snapshot.ref);
+            setUploadProgress(0);
+            resolve();
+          }
+        );
+      });
+    }
+
+    const payload = {
+      sender: "Nexus (You)",
       type: "user",
-      content: inputValue,
+      content: messageContent,
+      fileUrl,
+      fileType,
+      timestamp: serverTimestamp(),
+      starred: false
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInputValue("");
+    // Save user message to the active channel
+    await addDoc(collection(db, `servers/${id}/channels/${activeTab !== 'starred' ? activeTab : 'general-chat'}/messages`), payload);
 
-    // Detect if calling bot (e.g., idea prompt or @NOVA)
-    if (userMessage.content.toLowerCase().includes("idea") || userMessage.content.toLowerCase().includes("@nova")) {
-       triggerBotAnalysis(userMessage.content);
+    if (activeTab === "nova-ai" && messageContent.trim()) {
+      triggerBotAnalysis(messageContent);
     }
   };
 
@@ -50,192 +125,257 @@ export default function ServerWorkspace() {
       const data = await response.json();
       
       const botReport = {
-        id: Date.now() + 1,
         sender: "NOVA Bot",
         type: "bot_report",
         ideaPrompt: prompt,
         exists: data.exists || "An error occurred fetching data.",
         uniquenessTips: data.uniquenessTips || "No unique tips returned.",
         basicStructure: data.basicStructure || "No structure returned.",
+        timestamp: serverTimestamp(),
         starred: false
       };
       
-      setMessages((prev) => [...prev, botReport]);
+      await addDoc(collection(db, `servers/${id}/channels/nova-ai/messages`), botReport);
     } catch (error) {
       console.error("Error analyzing idea:", error);
-      const errorReport = {
-        id: Date.now() + 1,
-        sender: "NOVA Bot",
-        type: "bot_report",
-        ideaPrompt: prompt,
-        exists: "Network Error.",
-        uniquenessTips: "Could not connect to the API.",
-        basicStructure: "Please check your logs.",
-        starred: false
-      };
-      setMessages((prev) => [...prev, errorReport]);
     } finally {
       setIsBotTyping(false);
     }
   };
 
-  const toggleStar = (messageId: number) => {
-    setMessages(prev => prev.map(msg => {
-      if (msg.id === messageId) {
-        const isNowStarred = !msg.starred;
-        if (isNowStarred && !starredIdeas.find(i => i.id === messageId)) {
-          setStarredIdeas([...starredIdeas, { ...msg, starred: true }]);
-        } else if (!isNowStarred) {
-          setStarredIdeas(starredIdeas.filter(i => i.id !== messageId));
-        }
-        return { ...msg, starred: !msg.starred };
-      }
-      return msg;
-    }));
+  const toggleStar = async (messageId: string, currentStatus: boolean, isAiChannel: boolean) => {
+    const channelRef = isAiChannel ? 'nova-ai' : activeTab;
+    const msgRef = doc(db, `servers/${id}/channels/${channelRef}/messages`, messageId);
+    await updateDoc(msgRef, {
+      starred: !currentStatus
+    });
+  };
+
+  const renderFile = (url: string, type: string) => {
+    if (type.startsWith("image/")) {
+      return <img src={url} alt="upload" style={{ maxWidth: "400px", borderRadius: "8px", marginTop: "10px" }} />;
+    } else if (type.startsWith("video/")) {
+      return <video controls src={url} style={{ maxWidth: "400px", borderRadius: "8px", marginTop: "10px" }} />;
+    }
+    return <a href={url} target="_blank" rel="noreferrer" style={{ color: "var(--primary-light)", textDecoration: "underline" }}>Download Attached File</a>;
   };
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "var(--background)" }}>
-      {/* Sidebar */}
-      <div style={{ width: "250px", borderRight: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.5)", display: "flex", flexDirection: "column" }}>
+      {/* 1. Left Sidebar - Channels */}
+      <div style={{ width: "240px", borderRight: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.6)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
         <div style={{ padding: "20px", borderBottom: "1px solid var(--glass-border)" }}>
-           <h3 style={{ color: "var(--primary-light)", letterSpacing: "1px" }}>Workspace</h3>
-           <p style={{ fontSize: "0.8rem", color: "#888" }}>Code: {id}</p>
+           <h3 style={{ color: "var(--primary-light)", letterSpacing: "1px", display: "flex", alignItems: "center", gap: "8px" }}>
+             <img src="https://www.svgrepo.com/show/532362/sparkles.svg" width={20} style={{ filter: "invert(0.5) sepia(1) hue-rotate(240deg) saturate(3)"}} alt="logo"/>
+             WORKSPACE
+           </h3>
+           <p style={{ fontSize: "0.75rem", color: "#888", marginTop: "5px" }}>ID: {id}</p>
         </div>
 
-        <div style={{ padding: "20px", flex: 1 }}>
-           <p style={{ fontSize: "0.8rem", color: "#888", marginBottom: "10px", textTransform: "uppercase" }}>Channels</p>
+        <div style={{ padding: "20px", flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
+           <p style={{ fontSize: "0.75rem", color: "#666", marginBottom: "5px", textTransform: "uppercase", fontWeight: "bold" }}>Text Channels</p>
+           
            <button 
-             onClick={() => setActiveTab("chat")}
-             style={{ background: activeTab === "chat" ? "var(--glass)" : "transparent", color: "white", border: "none", width: "100%", textAlign: "left", padding: "10px", borderRadius: "8px", cursor: "pointer", marginBottom: "5px" }}
+             className="channel-btn"
+             onClick={() => setActiveTab("general-chat")}
+             style={{ background: activeTab === "general-chat" ? "var(--glass-hover)" : "transparent", color: activeTab === "general-chat" ? "white" : "#aaa", border: "none", width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: "6px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
            >
-             # general-chat
+             <span style={{ fontSize: "1.1rem", color: "#555" }}>#</span> general-chat
            </button>
+           
            <button 
-             onClick={() => setActiveTab("starred")}
-             style={{ background: activeTab === "starred" ? "var(--glass)" : "transparent", color: "white", border: "none", width: "100%", textAlign: "left", padding: "10px", borderRadius: "8px", cursor: "pointer", display: "flex", justifyContent: "space-between" }}
+             className="channel-btn"
+             onClick={() => setActiveTab("nova-ai")}
+             style={{ background: activeTab === "nova-ai" ? "var(--glass-hover)" : "transparent", color: activeTab === "nova-ai" ? "var(--primary-light)" : "#aaa", border: "none", width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: "6px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
            >
-             ⭐ Starred Ideas
-             {starredIdeas.length > 0 && <span style={{ background: "var(--primary)", borderRadius: "10px", padding: "2px 6px", fontSize: "0.7rem", color: "white" }}>{starredIdeas.length}</span>}
+             <span style={{ fontSize: "1.1rem" }}>🤖</span> nova-ai
            </button>
+
+           <button 
+             className="channel-btn"
+             onClick={() => setActiveTab("resources")}
+             style={{ background: activeTab === "resources" ? "var(--glass-hover)" : "transparent", color: activeTab === "resources" ? "white" : "#aaa", border: "none", width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: "6px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
+           >
+             <span style={{ fontSize: "1.1rem" }}>📁</span> resources
+           </button>
+
+           <div style={{ marginTop: "20px", borderTop: "1px solid var(--glass-border)", paddingTop: "20px" }}>
+             <button 
+               className="channel-btn"
+               onClick={() => setActiveTab("starred")}
+               style={{ background: activeTab === "starred" ? "var(--glass-hover)" : "transparent", color: activeTab === "starred" ? "#ffca28" : "#aaa", border: "none", width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: "6px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
+             >
+               <span style={{ fontSize: "1.1rem" }}>⭐</span> Starred Ideas
+             </button>
+           </div>
         </div>
 
-        <div style={{ padding: "20px", borderTop: "1px solid var(--glass-border)" }}>
+        <div style={{ padding: "20px", borderTop: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.3)" }}>
            <Link href="/lobby">
-              <button className="nova-button secondary" style={{ width: "100%", fontSize: "0.9rem", padding: "8px" }}>Leave Server</button>
+              <button className="nova-button secondary" style={{ width: "100%", fontSize: "0.85rem", padding: "8px" }}>Leave Server</button>
            </Link>
         </div>
       </div>
 
-      {/* Main Content View */}
+      {/* 2. Main Content View - Chat */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative" }}>
         
-        {/* Header */}
-        <div style={{ height: "65px", borderBottom: "1px solid var(--glass-border)", display: "flex", alignItems: "center", padding: "0 20px", background: "rgba(0,0,0,0.3)" }}>
-           {activeTab === "chat" ? (
-             <h3># general-chat</h3>
-           ) : (
-             <h3>⭐ Starred Ideas Refinement</h3>
-           )}
+        {/* Chat Header */}
+        <div style={{ height: "65px", borderBottom: "1px solid var(--glass-border)", display: "flex", alignItems: "center", padding: "0 20px", background: "rgba(2, 0, 8, 0.8)", backdropFilter: "blur(10px)" }}>
+           <h3 style={{ fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "8px" }}>
+             {activeTab === "general-chat" && <><span style={{ color: "#666" }}>#</span> general-chat</>}
+             {activeTab === "nova-ai" && <>🤖 nova-ai <span style={{fontSize: "0.8rem", color: "#888", marginLeft: "10px", fontWeight: "normal"}}>Ask the bot to structure your ideas.</span></>}
+             {activeTab === "resources" && <>📁 resources <span style={{fontSize: "0.8rem", color: "#888", marginLeft: "10px", fontWeight: "normal"}}>Share files, images, and videos here.</span></>}
+             {activeTab === "starred" && <>⭐ Starred AI Reports</>}
+           </h3>
         </div>
 
-        {/* Chat Area */}
-        {activeTab === "chat" && (
-          <div style={{ flex: 1, padding: "20px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "20px" }}>
-             {messages.length === 0 && (
-               <div style={{ margin: "auto", color: "#666", textAlign: "center" }}>
-                  <img src="https://www.svgrepo.com/show/532362/sparkles.svg" width={40} style={{ filter: "invert(0.5) sepia(1) hue-rotate(240deg) saturate(3)"}} alt="sparkles"/>
-                  <p style={{ marginTop: "10px" }}>Start the conversation. Share an idea or mention @NOVA to analyze.</p>
+        {/* Chat Feed */}
+        <div style={{ flex: 1, padding: "20px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "24px" }}>
+           {messages.length === 0 && (
+             <div style={{ margin: "auto", color: "#666", textAlign: "center", maxWidth: "400px" }}>
+                <h2 style={{ color: "white", marginBottom: "10px" }}>Welcome to {activeTab === "starred" ? "Starred Ideas" : `#${activeTab}`}!</h2>
+                <p>This is the beginning of the channel. Send a message to start syncing with your team.</p>
+             </div>
+           )}
+
+           {messages.map((msg) => (
+              <div key={msg.id} style={{ display: "flex", gap: "15px", animation: "fadeInUp 0.3s ease-out forwards" }}>
+                 {/* Avatar */}
+                 <div style={{ width: "45px", height: "45px", borderRadius: "50%", background: msg.type === "bot_report" ? "var(--primary)" : "var(--glass)", border: msg.type === "bot_report" ? "2px solid var(--primary-light)" : "1px solid var(--glass-border)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", flexShrink: 0, boxShadow: msg.type === "bot_report" ? "0 0 10px rgba(157, 78, 221, 0.5)" : "none" }}>
+                    {msg.sender.charAt(0)}
+                 </div>
+                 
+                 {/* Message Body */}
+                 <div style={{ flex: 1, maxWidth: "100%" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "10px", marginBottom: "4px" }}>
+                       <span style={{ fontWeight: "600", fontSize: "0.95rem", color: msg.type === "bot_report" ? "var(--accent)" : "white" }}>
+                         {msg.sender}
+                       </span>
+                       <span style={{ fontSize: "0.75rem", color: "#666" }}>
+                          {msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "Just now"}
+                       </span>
+                    </div>
+
+                    {msg.type === "user" && (
+                       <div style={{ color: "#eee", fontSize: "0.95rem", lineHeight: "1.5" }}>
+                         {msg.content}
+                         {msg.fileUrl && renderFile(msg.fileUrl, msg.fileType)}
+                       </div>
+                    )}
+
+                    {msg.type === "bot_report" && (
+                       <div className="glass-panel" style={{ padding: "20px", position: "relative", marginTop: "10px", border: "1px solid var(--primary-light)", background: "rgba(157, 78, 221, 0.05)", borderRadius: "8px" }}>
+                          <div style={{ position: "absolute", top: "15px", right: "15px", display: "flex", gap: "10px" }}>
+                             <button 
+                               onClick={() => toggleStar(msg.id, msg.starred, activeTab === 'nova-ai' || activeTab === 'starred')}
+                               style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: "1.2rem", filter: msg.starred ? "grayscale(0)" : "grayscale(1)" }}
+                               title="Star this idea"
+                             >⭐</button>
+                          </div>
+
+                          <p style={{ fontStyle: "italic", color: "#aaa", marginBottom: "15px", paddingBottom:"10px", borderBottom: "1px solid rgba(255,255,255,0.1)", fontSize: "0.9rem" }}>Analysis for: "{msg.ideaPrompt}"</p>
+                          
+                          <h4 style={{ color: "var(--primary-light)", marginBottom: "4px", fontSize: "0.95rem" }}>Market Reality</h4>
+                          <p style={{ color: "#ddd", marginBottom: "15px", fontSize: "0.9rem", lineHeight: "1.5" }}>{msg.exists}</p>
+
+                          <h4 style={{ color: "var(--primary-light)", marginBottom: "4px", fontSize: "0.95rem" }}>Uniqueness Tips</h4>
+                          <p style={{ color: "#ddd", marginBottom: "15px", fontSize: "0.9rem", lineHeight: "1.5" }}>{msg.uniquenessTips}</p>
+
+                          <h4 style={{ color: "var(--primary-light)", marginBottom: "4px", fontSize: "0.95rem" }}>Implementation Structure</h4>
+                          <p style={{ color: "#ddd", fontSize: "0.9rem", whiteSpace: "pre-wrap", lineHeight: "1.5", background: "rgba(0,0,0,0.3)", padding: "10px", borderRadius: "6px", fontFamily: "monospace" }}>{msg.basicStructure}</p>
+                       </div>
+                    )}
+                 </div>
+              </div>
+           ))}
+
+           {isBotTyping && (
+              <div style={{ display: "flex", gap: "15px", animation: "fadeInUp 0.3s" }}>
+                 <div style={{ width: "45px", height: "45px", borderRadius: "50%", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: "2px solid var(--primary-light)" }}>🤖</div>
+                 <div style={{ color: "var(--primary-light)", fontSize: "0.9rem", display: "flex", alignItems: "center", fontStyle: "italic" }}>
+                   NOVA AI is formulating a response...
+                 </div>
+              </div>
+           )}
+           <div ref={endOfMessagesRef} />
+        </div>
+
+        {/* Chat Input Bar */}
+        {activeTab !== "starred" && (
+           <div style={{ padding: "0 20px 20px 20px" }}>
+             {/* File Preview before sending */}
+             {fileToUpload && (
+               <div style={{ padding: "10px", background: "var(--glass)", borderTopLeftRadius: "8px", borderTopRightRadius: "8px", border: "1px solid var(--glass-border)", borderBottom: "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: "0.85rem", color: "#ccc" }}>📎 Attached: {fileToUpload.name}</span>
+                  <button onClick={() => setFileToUpload(null)} style={{ background: "transparent", color: "white", border: "none", cursor: "pointer", fontSize: "1.2rem" }}>&times;</button>
                </div>
              )}
+             
+             <div style={{ display: "flex", background: "rgba(0,0,0,0.7)", borderRadius: fileToUpload ? "0 0 8px 8px" : "8px", padding: "10px 15px", alignItems: "center", gap: "10px", border: "1px solid var(--glass-border)" }}>
+               
+               {activeTab === "resources" && (
+                 <label style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#aaa", padding: "5px", transition: "color 0.2s" }} onMouseOver={e => e.currentTarget.style.color="white"} onMouseOut={e => e.currentTarget.style.color="#aaa"}>
+                   <input 
+                     type="file" 
+                     onChange={(e) => {
+                       if (e.target.files && e.target.files[0]) {
+                         setFileToUpload(e.target.files[0]);
+                       }
+                     }} 
+                     style={{ display: "none" }}
+                   />
+                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                 </label>
+               )}
 
-             {messages.map((msg) => (
-                <div key={msg.id} style={{ display: "flex", gap: "15px", animation: "fadeInUp 0.3s ease-out forwards" }}>
-                   <div style={{ width: "40px", height: "40px", borderRadius: "20px", background: msg.type === "bot_report" ? "var(--primary)" : "var(--glass)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", flexShrink: 0 }}>
-                      {msg.sender.charAt(0)}
-                   </div>
-                   
-                   <div style={{ flex: 1 }}>
-                      <p style={{ fontWeight: "bold", fontSize: "0.9rem", color: msg.type === "bot_report" ? "var(--primary-light)" : "white", marginBottom: "5px" }}>
-                        {msg.sender}
-                      </p>
-
-                      {msg.type === "user" && <p style={{ color: "#ddd" }}>{msg.content}</p>}
-
-                      {msg.type === "bot_report" && (
-                         <div className="glass-panel" style={{ padding: "20px", position: "relative", marginTop: "10px", border: "1px solid var(--primary-light)" }}>
-                            <div style={{ position: "absolute", top: "15px", right: "15px", display: "flex", gap: "10px" }}>
-                               <button 
-                                 onClick={() => toggleStar(msg.id)}
-                                 style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: "1.2rem", filter: msg.starred ? "grayscale(0)" : "grayscale(1)" }}
-                               >⭐</button>
-                               <button style={{ background: "var(--glass)", border: "1px solid var(--glass-border)", color: "white", padding: "4px 8px", borderRadius: "4px", cursor: "pointer", fontSize: "0.8rem", transition: "0.2s background" }} onMouseOver={e => e.currentTarget.style.background="var(--glass-hover)"} onMouseOut={e => e.currentTarget.style.background="var(--glass)"}>✍ Modify</button>
-                            </div>
-
-                            <p style={{ fontStyle: "italic", color: "#aaa", marginBottom: "15px", paddingBottom:"10px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>Analysis for: "{msg.ideaPrompt}"</p>
-                            
-                            <h4 style={{ color: "var(--accent)" }}>Does this exist?</h4>
-                            <p style={{ color: "#ddd", marginBottom: "15px", fontSize: "0.95rem" }}>{msg.exists}</p>
-
-                            <h4 style={{ color: "var(--accent)" }}>How to make it unique</h4>
-                            <p style={{ color: "#ddd", marginBottom: "15px", fontSize: "0.95rem" }}>{msg.uniquenessTips}</p>
-
-                            <h4 style={{ color: "var(--accent)" }}>Basic Structure / Knowledge</h4>
-                            <p style={{ color: "#ddd", fontSize: "0.95rem", whiteSpace: "pre-wrap" }}>{msg.basicStructure}</p>
-                         </div>
-                      )}
-                   </div>
-                </div>
-             ))}
-
-             {isBotTyping && (
-                <div style={{ display: "flex", gap: "15px", animation: "fadeInUp 0.3s" }}>
-                   <div style={{ width: "40px", height: "40px", borderRadius: "20px", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>N</div>
-                   <div style={{ color: "var(--primary-light)", fontSize: "0.9rem", display: "flex", alignItems: "center", fontStyle: "italic" }}>
-                     NOVA Bot is analyzing market data...
-                   </div>
-                </div>
-             )}
-             <div ref={endOfMessagesRef} />
-          </div>
-        )}
-
-        {/* Input Area */}
-        {activeTab === "chat" && (
-           <div style={{ padding: "20px", background: "rgba(0,0,0,0.5)", borderTop: "1px solid var(--glass-border)" }}>
-             <div style={{ display: "flex", gap: "10px" }}>
                <input 
                  type="text" 
-                 placeholder="Message #general-chat (mention @NOVA or 'idea' for AI analysis)" 
+                 placeholder={activeTab === "nova-ai" ? "Prompt NOVA AI with your idea..." : `Message #${activeTab}`}
                  value={inputValue}
                  onChange={(e) => setInputValue(e.target.value)}
                  onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                 style={{ padding: "15px", borderRadius: "12px", background: "rgba(255,255,255,0.05)" }}
+                 style={{ flex: 1, background: "transparent", border: "none", color: "white", outline: "none", fontSize: "0.95rem", padding: "5px", boxShadow: "none" }}
+                 disabled={uploadProgress > 0}
                />
-               <button onClick={handleSendMessage} className="nova-button" style={{ padding: "0 30px" }}>Send</button>
+               
+               <button 
+                 onClick={handleSendMessage} 
+                 style={{ background: "transparent", border: "none", color: inputValue || fileToUpload ? "var(--primary-light)" : "#555", cursor: inputValue || fileToUpload ? "pointer" : "default", display: "flex", alignItems: "center", transition: "color 0.2s" }}
+                 disabled={(!inputValue && !fileToUpload) || uploadProgress > 0}
+               >
+                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+               </button>
              </div>
+             {uploadProgress > 0 && <p style={{ fontSize: "0.75rem", color: "var(--primary-light)", marginTop: "5px" }}>Uploading: {Math.round(uploadProgress)}%</p>}
            </div>
         )}
+      </div>
 
-        {/* Starred Ideas Area */}
-        {activeTab === "starred" && (
-           <div style={{ flex: 1, padding: "20px", overflowY: "auto" }}>
-              {starredIdeas.length === 0 ? (
-                <p style={{ color: "#888", textAlign: "center", marginTop: "50px" }}>No starred ideas yet. Star an AI report in the chat to save it here.</p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-                  {starredIdeas.map(idea => (
-                     <div key={idea.id} className="glass-panel" style={{ borderLeft: "4px solid #ffca28" }}>
-                        <h3 style={{ marginBottom: "15px", color: "var(--primary-light)" }}>Analysis: "{idea.ideaPrompt}"</h3>
-                        <p style={{ color: "#ddd", marginBottom: "10px", fontSize: "0.95rem" }}><strong style={{color:"var(--accent)"}}>Unique Angles:</strong><br/>{idea.uniquenessTips}</p>
-                        <p style={{ color: "#ddd", whiteSpace: "pre-wrap", fontSize: "0.95rem" }}><strong style={{color:"var(--accent)"}}>Structure:</strong><br/>{idea.basicStructure}</p>
-                     </div>
-                  ))}
-                </div>
-              )}
-           </div>
-        )}
-
+      {/* 3. Right Sidebar - Members */}
+      <div style={{ width: "240px", borderLeft: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.6)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
+         <div style={{ padding: "20px 20px 10px 20px" }}>
+            <h4 style={{ fontSize: "0.8rem", color: "#888", textTransform: "uppercase", letterSpacing: "0.5px" }}>MEMBERS — {MEMBERS.length}</h4>
+         </div>
+         
+         <div style={{ padding: "10px", overflowY: "auto", flex: 1 }}>
+            {MEMBERS.map(member => (
+              <div key={member.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "6px", cursor: "pointer", transition: "background 0.2s" }} className="channel-btn" onMouseOver={e => e.currentTarget.style.background="var(--glass-hover)"} onMouseOut={e => e.currentTarget.style.background="transparent"}>
+                 <div style={{ position: "relative" }}>
+                   <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "var(--glass)", border: "1px solid var(--glass-border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", fontWeight: "bold" }}>
+                     {member.name.charAt(0)}
+                   </div>
+                   <div 
+                     className={`status-indicator ${member.online ? 'status-online' : 'status-offline'}`} 
+                     style={{ position: "absolute", bottom: "-2px", right: "-2px", border: "2px solid rgba(0,0,0,0.8)" }}
+                   />
+                 </div>
+                 <span style={{ fontSize: "0.9rem", color: member.online ? "white" : "#777", fontWeight: member.online ? "500" : "normal" }}>
+                   {member.name}
+                 </span>
+              </div>
+            ))}
+         </div>
       </div>
     </div>
   );
