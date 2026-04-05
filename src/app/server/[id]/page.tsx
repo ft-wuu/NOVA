@@ -37,24 +37,46 @@ export default function ServerWorkspace() {
     }
   };
 
-  const triggerBotAnalysis = (prompt: string) => {
+  const triggerBotAnalysis = async (prompt: string) => {
     setIsBotTyping(true);
     
-    // Simulate Gemini API Call Output Structure
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+      
+      const data = await response.json();
+      
       const botReport = {
         id: Date.now() + 1,
         sender: "NOVA Bot",
         type: "bot_report",
         ideaPrompt: prompt,
-        exists: "Yes, similar concepts exist. Usually they function as standard productivity tools or basic note-taking apps.",
-        uniquenessTips: "To make it unique, integrate AI-driven personalized insights directly into the workflow. Add real-time multiplayer editing powered by Websockets or Firebase so teams can mutate the AI's idea collaboratively.",
-        basicStructure: "1. Next.js Frontend (React)\n2. Firebase Realtime DB & Auth\n3. Gemini API for Idea Analysis\n4. Vector database for advanced context search",
+        exists: data.exists || "An error occurred fetching data.",
+        uniquenessTips: data.uniquenessTips || "No unique tips returned.",
+        basicStructure: data.basicStructure || "No structure returned.",
         starred: false
       };
+      
       setMessages((prev) => [...prev, botReport]);
+    } catch (error) {
+      console.error("Error analyzing idea:", error);
+      const errorReport = {
+        id: Date.now() + 1,
+        sender: "NOVA Bot",
+        type: "bot_report",
+        ideaPrompt: prompt,
+        exists: "Network Error.",
+        uniquenessTips: "Could not connect to the API.",
+        basicStructure: "Please check your logs.",
+        starred: false
+      };
+      setMessages((prev) => [...prev, errorReport]);
+    } finally {
       setIsBotTyping(false);
-    }, 2500);
+    }
   };
 
   const toggleStar = (messageId: number) => {
