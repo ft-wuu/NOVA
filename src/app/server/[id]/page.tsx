@@ -3,21 +3,14 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { db, storage } from "../../../lib/firebase";
 import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, updateDoc, doc, where } from "firebase/firestore";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { db, storage } from "../../../lib/firebase";
-
-const MEMBERS = [
-  { id: 1, name: "Nexus (You)", online: true },
-  { id: 2, name: "Cypher", online: true },
-  { id: 3, name: "Trinity", online: false },
-  { id: 4, name: "Neo", online: true },
-  { id: 5, name: "Morpheus", online: false },
-  { id: 6, name: "Architect", online: false },
-];
 
 export default function ServerWorkspace() {
   const { id } = useParams();
+  const [currentUser, setCurrentUser] = useState("Unknown member");
+  const [members, setMembers] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [activeTab, setActiveTab] = useState("general-chat"); // general-chat, nova-ai, resources, starred
@@ -33,7 +26,19 @@ export default function ServerWorkspace() {
   }, [messages, isBotTyping]);
 
   useEffect(() => {
+    // Session Setup
+    const storedUser = localStorage.getItem("nova_user");
+    if (storedUser) {
+      setCurrentUser(storedUser);
+    }
+
     if (!id) return;
+
+    // Fetch live members
+    const membersUnsub = onSnapshot(collection(db, `servers/${id}/members`), (snapshot) => {
+      const liveMembers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMembers(liveMembers);
+    });
 
     let q;
     if (activeTab === "starred") {
@@ -55,7 +60,10 @@ export default function ServerWorkspace() {
       setMessages(msgs);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      membersUnsub();
+    };
   }, [id, activeTab]);
 
   const handleSendMessage = async () => {
@@ -95,7 +103,7 @@ export default function ServerWorkspace() {
     }
 
     const payload = {
-      sender: "Nexus (You)",
+      sender: currentUser,
       type: "user",
       content: messageContent,
       fileUrl,
@@ -128,9 +136,9 @@ export default function ServerWorkspace() {
         sender: "NOVA Bot",
         type: "bot_report",
         ideaPrompt: prompt,
-        exists: data.exists || "An error occurred fetching data.",
-        uniquenessTips: data.uniquenessTips || "No unique tips returned.",
-        basicStructure: data.basicStructure || "No structure returned.",
+        exists: data.exists || "Information not found.",
+        uniquenessTips: data.uniquenessTips || "No tips generated.",
+        basicStructure: data.basicStructure || "No structure generated.",
         timestamp: serverTimestamp(),
         starred: false
       };
@@ -138,6 +146,17 @@ export default function ServerWorkspace() {
       await addDoc(collection(db, `servers/${id}/channels/nova-ai/messages`), botReport);
     } catch (error) {
       console.error("Error analyzing idea:", error);
+      const errorReport = {
+        sender: "NOVA Bot",
+        type: "bot_report",
+        ideaPrompt: prompt,
+        exists: "Network or Server Error.",
+        uniquenessTips: "Could not connect to the API or the API key is unauthorized.",
+        basicStructure: "Please verify your Gemini API key in the Vercel dashboard and ensure your prompt was clear.",
+        timestamp: serverTimestamp(),
+        starred: false
+      };
+      await addDoc(collection(db, `servers/${id}/channels/nova-ai/messages`), errorReport);
     } finally {
       setIsBotTyping(false);
     }
@@ -355,11 +374,11 @@ export default function ServerWorkspace() {
       {/* 3. Right Sidebar - Members */}
       <div style={{ width: "240px", borderLeft: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.6)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
          <div style={{ padding: "20px 20px 10px 20px" }}>
-            <h4 style={{ fontSize: "0.8rem", color: "#888", textTransform: "uppercase", letterSpacing: "0.5px" }}>MEMBERS — {MEMBERS.length}</h4>
+            <h4 style={{ fontSize: "0.8rem", color: "#888", textTransform: "uppercase", letterSpacing: "0.5px" }}>MEMBERS — {members.length}</h4>
          </div>
          
          <div style={{ padding: "10px", overflowY: "auto", flex: 1 }}>
-            {MEMBERS.map(member => (
+            {members.map(member => (
               <div key={member.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "6px", cursor: "pointer", transition: "background 0.2s" }} className="channel-btn" onMouseOver={e => e.currentTarget.style.background="var(--glass-hover)"} onMouseOut={e => e.currentTarget.style.background="transparent"}>
                  <div style={{ position: "relative" }}>
                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "var(--glass)", border: "1px solid var(--glass-border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", fontWeight: "bold" }}>
@@ -371,7 +390,7 @@ export default function ServerWorkspace() {
                    />
                  </div>
                  <span style={{ fontSize: "0.9rem", color: member.online ? "white" : "#777", fontWeight: member.online ? "500" : "normal" }}>
-                   {member.name}
+                   {member.name} {member.name === currentUser && <span style={{fontSize: "0.75rem", color: "var(--primary-light)"}}>(You)</span>}
                  </span>
               </div>
             ))}
