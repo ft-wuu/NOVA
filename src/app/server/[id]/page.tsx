@@ -15,6 +15,7 @@ export default function ServerWorkspace() {
   const [inputValue, setInputValue] = useState("");
   const [activeTab, setActiveTab] = useState("general-chat"); // general-chat, nova-ai, resources, starred
   const [isBotTyping, setIsBotTyping] = useState(false);
+  const [isBotAwake, setIsBotAwake] = useState(false);
   
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -116,7 +117,35 @@ export default function ServerWorkspace() {
     await addDoc(collection(db, `servers/${id}/channels/${activeTab !== 'starred' ? activeTab : 'general-chat'}/messages`), payload);
 
     if (activeTab === "nova-ai" && messageContent.trim()) {
-      triggerBotAnalysis(messageContent);
+      if (messageContent.toLowerCase() === "@nova-ai") {
+         setIsBotAwake(true);
+         const botReport = {
+          sender: "NOVA Bot",
+          type: "bot_report",
+          ideaPrompt: "Awakening Sequence",
+          exists: "I am Online.",
+          uniquenessTips: "I am now actively listening to this channel! Any message you type here will be automatically analyzed.",
+          basicStructure: "Type `!@nova-ai` whenever you want me to go back to sleep.",
+          timestamp: serverTimestamp(),
+          starred: false
+         };
+         await addDoc(collection(db, `servers/${id}/channels/nova-ai/messages`), botReport);
+      } else if (messageContent.toLowerCase() === "!@nova-ai") {
+         setIsBotAwake(false);
+         const botReport = {
+          sender: "NOVA Bot",
+          type: "bot_report",
+          ideaPrompt: "Sleep Sequence",
+          exists: "I am Offline.",
+          uniquenessTips: "I will no longer respond to your messages in this channel.",
+          basicStructure: "Type `@nova-ai` to wake me up again.",
+          timestamp: serverTimestamp(),
+          starred: false
+         };
+         await addDoc(collection(db, `servers/${id}/channels/nova-ai/messages`), botReport);
+      } else if (isBotAwake) {
+         triggerBotAnalysis(messageContent);
+      }
     }
   };
 
@@ -185,7 +214,7 @@ export default function ServerWorkspace() {
       <div style={{ width: "240px", borderRight: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.6)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
         <div style={{ padding: "20px", borderBottom: "1px solid var(--glass-border)" }}>
            <h3 style={{ color: "var(--primary-light)", letterSpacing: "1px", display: "flex", alignItems: "center", gap: "8px" }}>
-             <img src="https://www.svgrepo.com/show/532362/sparkles.svg" width={20} style={{ filter: "invert(0.5) sepia(1) hue-rotate(240deg) saturate(3)"}} alt="logo"/>
+             <span style={{ fontSize: "1.2rem" }}>✨</span>
              WORKSPACE
            </h3>
            <p style={{ fontSize: "0.75rem", color: "#888", marginTop: "5px" }}>ID: {id}</p>

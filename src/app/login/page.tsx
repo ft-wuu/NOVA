@@ -43,7 +43,7 @@ export default function Login() {
           className="nova-button secondary" 
           style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginTop: "10px" }}
         >
-          <img src="https://www.svgrepo.com/show/475656/google-color.svg" width={24} height={24} alt="Google" />
+          <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" width={24} height={24} alt="Google" />
           Continue with Google
         </button>
 
@@ -52,7 +52,7 @@ export default function Login() {
           className="nova-button secondary" 
           style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}
         >
-          <img src="https://www.svgrepo.com/show/475654/github.svg" width={24} height={24} style={{ filter: "invert(1)" }} alt="GitHub" />
+          <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" width={24} height={24} style={{ filter: "invert(1)" }} alt="GitHub" />
           Continue with GitHub
         </button>
 
@@ -61,7 +61,7 @@ export default function Login() {
           className="nova-button secondary" 
           style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}
         >
-          <img src="https://www.svgrepo.com/show/511330/apple-173.svg" width={24} height={24} style={{ filter: "invert(1)" }} alt="Apple" />
+          <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" width={24} height={24} style={{ filter: "invert(1)" }} alt="Apple" />
           Continue with Apple
         </button>
 
