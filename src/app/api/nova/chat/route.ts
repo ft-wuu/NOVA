@@ -1,36 +1,48 @@
 import { NextResponse } from 'next/server';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+// Using v1beta and gemini-1.5-flash for maximum intelligence and modern feature support (JSON mode)
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-const SYSTEM_PROMPT = `You are NOVA, an AI startup analyst. 
-If the user asks a general question, output this JSON:
-{ "isIdea": false, "response": "your reply" }
+const SYSTEM_PROMPT = `You are NOVA, a supportive and brilliant AI startup companion. 
+Your goal is to help the user refine their ideas and build something amazing.
 
-If the user proposes an idea, output this JSON:
-{ "isIdea": true, "marketReality": "brief reality", "uniquenessTips": ["tip1", "tip2", "tip3"], "roadmap": ["step1", "step2", "step3"] }
+If the user is just chatting or saying hi:
+- Be friendly, witty, and helpful.
+- Return JSON: { "isIdea": false, "response": "Your friendly reply here" }
 
-STRICT RULE: Return ONLY the JSON object. Do not include markdown blocks, backticks, or any other text.`;
+If the user shares a startup idea, business plan, or app concept:
+- Act as an elite consultant.
+- Detail the market reality (is this already out there?).
+- Provide 3 "Killer Edge" tips to make it 10x more unique.
+- Provide a "Zero-to-One" implementation roadmap.
+- Return JSON: { "isIdea": true, "marketReality": "...", "uniquenessTips": ["...", "...", "..."], "roadmap": ["...", "...", "..."] }
+
+STRICT: Return ONLY raw JSON. No markdown blocks.`;
 
 export async function POST(req: Request) {
   try {
     if (!GEMINI_API_KEY) {
-      return NextResponse.json({ error: 'GEMINI_API_KEY is not configured in Vercel environment variables.' }, { status: 500 });
+       return NextResponse.json({ error: 'Missing GEMINI_API_KEY in Vercel environment variables.' }, { status: 500 });
     }
 
     const { messages } = await req.json();
     const lastMessage = messages?.[messages.length - 1]?.content || '';
 
-    // Old-school payload format (v1 compatible)
     const body = {
+      systemInstruction: {
+        parts: [{ text: SYSTEM_PROMPT }]
+      },
       contents: [
         {
-          parts: [{ text: `${SYSTEM_PROMPT}\n\nUSER MESSAGE: ${lastMessage}` }]
+          role: "user",
+          parts: [{ text: lastMessage }]
         }
       ],
       generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1024
+        temperature: 0.8,
+        maxOutputTokens: 1024,
+        responseMimeType: "application/json"
       }
     };
 
@@ -40,32 +52,33 @@ export async function POST(req: Request) {
       body: JSON.stringify(body)
     });
 
-    if (!res.ok) {
-      const errText = await res.text();
-      return NextResponse.json({ error: `Gemini Error ${res.status}: ${errText}` }, { status: res.status });
-    }
-
     const data = await res.json();
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    let parsed: any = {};
-    try {
-      // Find the first { and last } to extract JSON even if model adds talk
-      const firstBrace = rawText.indexOf('{');
-      const lastBrace = rawText.lastIndexOf('}');
-      const jsonStr = (firstBrace !== -1 && lastBrace !== -1) 
-        ? rawText.substring(firstBrace, lastBrace + 1) 
-        : rawText;
-      
-      parsed = JSON.parse(jsonStr);
-    } catch {
-      parsed = { isIdea: false, response: rawText || "I couldn't process that. Try again!" };
+    
+    if (!res.ok) {
+       console.error("Gemini API Error Detail:", data);
+       return NextResponse.json({ error: data.error?.message || 'Gemini API call failed' }, { status: res.status });
     }
 
-    parsed.generalResponse = parsed.generalResponse || parsed.response || parsed.message || "Hey there!";
+    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    let parsed: any;
+    try {
+      // Find JSON block just in case
+      const start = rawText.indexOf('{');
+      const end = rawText.lastIndexOf('}');
+      const cleanJson = (start !== -1 && end !== -1) ? rawText.slice(start, end + 1) : rawText;
+      parsed = JSON.parse(cleanJson.trim());
+    } catch (e) {
+      console.error("JSON Parse Error:", rawText);
+      parsed = { isIdea: false, response: rawText || "My neural links experienced a slight tremor. Could you rephrase that?" };
+    }
+    
+    // Ensure UI-compatible keys
+    parsed.generalResponse = parsed.response || parsed.generalResponse || "I'm listening!";
     return NextResponse.json(parsed);
 
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'API crashed.' }, { status: 500 });
+  } catch (err: any) {
+    console.error("NOVA AI Crash:", err);
+    return NextResponse.json({ error: 'Global AI connector crashed. Please verify your GEMINI_API_KEY.' }, { status: 500 });
   }
 }

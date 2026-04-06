@@ -1,31 +1,35 @@
 import { NextResponse } from 'next/server';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+// Using the same v1beta + gemini-1.5-flash robust connection as the chat API
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 export async function POST(req: Request) {
   try {
     if (!GEMINI_API_KEY) {
-      return NextResponse.json({ error: 'GEMINI_API_KEY is not configured in Vercel environment variables.' }, { status: 500 });
+      return NextResponse.json({ error: 'Missing GEMINI_API_KEY in Vercel environment variables.' }, { status: 500 });
     }
 
     const { prompt } = await req.json();
 
-    const SYSTEM_PROMPT = `You are NOVA, an AI startup idea analyst.
-Analyze the user's idea and return ONLY a valid JSON object with these exact keys:
-{"exists":"brief reality check","uniquenessTips":"tips to stand out","basicStructure":"3 implementation steps"}
-
-RULE: No markdown, no backticks, no comments. Return ONLY the JSON object.`;
+    const SYSTEM_PROMPT = `You are NOVA, an AI startup analyst. 
+Analyze the provided idea and return ONLY a valid JSON object with these exact keys:
+{"exists":"A short explanation of whether similar concepts exist.","uniquenessTips":"Tips on how to make this idea unique.","basicStructure":"A high-level technical structure or implementation steps."}`;
 
     const body = {
+      systemInstruction: {
+        parts: [{ text: SYSTEM_PROMPT }]
+      },
       contents: [
         {
-          parts: [{ text: `${SYSTEM_PROMPT}\n\nIDEA PROMPT: ${prompt}` }]
+          role: "user",
+          parts: [{ text: `Idea: "${prompt}"` }]
         }
       ],
       generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1024
+        temperature: 0.8,
+        maxOutputTokens: 1024,
+        responseMimeType: "application/json"
       }
     };
 
@@ -35,33 +39,33 @@ RULE: No markdown, no backticks, no comments. Return ONLY the JSON object.`;
       body: JSON.stringify(body)
     });
 
+    const data = await res.json();
+
     if (!res.ok) {
-      const errText = await res.text();
-      return NextResponse.json({ error: `Gemini Error ${res.status}: ${errText}` }, { status: res.status });
+       console.error("Gemini Error:", data);
+       return NextResponse.json({ error: data.error?.message || 'Gemini API call failed' }, { status: res.status });
     }
 
-    const data = await res.json();
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    let parsedData: any = {};
+    
+    let parsedData: any;
     try {
-      const firstBrace = rawText.indexOf('{');
-      const lastBrace = rawText.lastIndexOf('}');
-      const jsonStr = (firstBrace !== -1 && lastBrace !== -1) 
-        ? rawText.substring(firstBrace, lastBrace + 1) 
-        : rawText;
-      
-      parsedData = JSON.parse(jsonStr);
-    } catch {
+      const start = rawText.indexOf('{');
+      const end = rawText.lastIndexOf('}');
+      const cleanJson = (start !== -1 && end !== -1) ? rawText.slice(start, end + 1) : rawText;
+      parsedData = JSON.parse(cleanJson.trim());
+    } catch (e) {
+      console.error("JSON Parse Error:", rawText);
       parsedData = {
-        exists: "Error parsing AI response.",
+        exists: "The AI was not able to perfectly structure its response. Re-try or re-phrase.",
         uniquenessTips: "Try again.",
         basicStructure: rawText
       };
     }
 
     return NextResponse.json(parsedData);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to analyze idea' }, { status: 500 });
+  } catch (err: any) {
+    console.error("API Error:", err);
+    return NextResponse.json({ error: err.message || 'The AI assistant hit a server connection roadblock.' }, { status: 500 });
   }
 }

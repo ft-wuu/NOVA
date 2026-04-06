@@ -182,7 +182,7 @@ export default function ServerWorkspace() {
         sender: "NOVA Mascot",
         type: "bot_report",
         ideaPrompt: prompt,
-        exists: data.error ? `🚨 AI Error: ${data.error}` : (data.isIdea ? (data.marketReality || "Hmm...") : (data.generalResponse || "Hey!")),
+        exists: data.error ? `🚨 AI Error: ${data.error}` : (data.isIdea ? (data.marketReality || "No market data found.") : (data.generalResponse || "I'm listening!")),
         uniquenessTips: data.error ? "" : (data.isIdea ? (data.uniquenessTips?.map((t: string) => "• " + t).join('\n') || "") : ""),
         basicStructure: data.error ? "" : (data.isIdea ? (data.roadmap?.map((t: string, i: number) => `${i+1}. ${t}`).join('\n') || "") : ""),
         timestamp: serverTimestamp(),
@@ -206,17 +206,17 @@ export default function ServerWorkspace() {
       const data = await response.json();
       
       let existsText = "Information not found.";
-      let tipsText = "No tips generated.";
-      let structureText = "No structure generated.";
+      let tipsText = "";
+      let structureText = "";
 
       if (data.error) {
           existsText = `🚨 AI Error: ${data.error}`;
-          tipsText = "Could not process request.";
+          tipsText = "System encountered a connection roadblock.";
           structureText = "1. Get a FREE Gemini API Key from Google AI Studio\n2. Add GEMINI_API_KEY to Vercel\n3. Redeploy";
       } else if (!data.isIdea) {
-          existsText = data.generalResponse || "No response";
-          tipsText = "General conversational response. Idea tips not applicable.";
-          structureText = "No execution roadmap mapped for general queries.";
+          existsText = data.generalResponse || "No response found.";
+          tipsText = "";
+          structureText = "";
       } else {
           existsText = data.marketReality || "No market data found.";
           if (data.uniquenessTips && Array.isArray(data.uniquenessTips)) {
@@ -228,7 +228,7 @@ export default function ServerWorkspace() {
       }
 
       const botReport = {
-        sender: "NOVA Bot",
+        sender: "NOVA Mascot",
         type: "bot_report",
         ideaPrompt: prompt,
         exists: existsText,
@@ -242,12 +242,12 @@ export default function ServerWorkspace() {
     } catch (error) {
       console.error("Error analyzing idea:", error);
       const errorReport = {
-        sender: "NOVA Bot",
+        sender: "NOVA Mascot",
         type: "bot_report",
         ideaPrompt: prompt,
-        exists: "Network or Server Error.",
-        uniquenessTips: "Could not connect to the Claude API or the API key is unauthorized.",
-        basicStructure: "Please verify your ANTHROPIC_API_KEY in the Vercel dashboard and ensure your prompt was clear.",
+        exists: "Network connection error.",
+        uniquenessTips: "Could not reach the AI core.",
+        basicStructure: "Please verify your GEMINI_API_KEY in the Vercel dashboard and ensure your prompt was clear.",
         timestamp: serverTimestamp(),
         starred: false
       };
@@ -585,32 +585,55 @@ export default function ServerWorkspace() {
                     )}
 
                     {msg.type === "bot_report" && (
-                       <div className="glass-panel" style={{ padding: "20px", position: "relative", marginTop: "10px", border: "1px solid var(--primary-light)", background: "rgba(157, 78, 221, 0.05)", borderRadius: "8px" }}>
-                          <div style={{ position: "absolute", top: "15px", right: "15px", display: "flex", gap: "10px" }}>
-                             <button 
-                               onClick={() => toggleStar(msg.id, msg.starred, activeTab === 'nova-ai' || activeTab === 'starred')}
-                               style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: "1.2rem", filter: msg.starred ? "grayscale(0)" : "grayscale(1)" }}
-                               title="Star this idea"
-                             >⭐</button>
-                          </div>
+                       <div style={{ marginTop: "5px" }}>
+                          {!msg.uniquenessTips && !msg.basicStructure ? (
+                            /* Standard Chat Bubble for non-idea replies */
+                            <div style={{ color: "#eee", fontSize: "0.95rem", lineHeight: "1.5", background: "rgba(157, 78, 221, 0.15)", padding: "12px 16px", borderRadius: "0 16px 16px 16px", border: "1px solid rgba(157, 78, 221, 0.3)", display: "inline-block", maxWidth: "85%" }}>
+                               {msg.exists}
+                            </div>
+                          ) : (
+                            /* Premium Strategy Report for startup ideas */
+                            <div className="glass-panel" style={{ padding: "20px", position: "relative", border: "2px solid var(--primary-light)", background: "rgba(157, 78, 221, 0.08)", borderRadius: "12px", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                               <div style={{ position: "absolute", top: "15px", right: "15px", display: "flex", gap: "10px" }}>
+                                  <button 
+                                    onClick={() => toggleStar(msg.id, msg.starred, activeTab === 'nova-ai' || activeTab === 'starred')}
+                                    style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: "1.2rem", filter: msg.starred ? "grayscale(0)" : "grayscale(1)" }}
+                                    title="Star this idea"
+                                  >⭐</button>
+                               </div>
 
-                          <p style={{ fontStyle: "italic", color: "#aaa", marginBottom: "15px", paddingBottom:"10px", borderBottom: "1px solid rgba(255,255,255,0.1)", fontSize: "0.9rem" }}>Analysis for: "{msg.ideaPrompt}"</p>
-                          
-                          <h4 style={{ color: "var(--primary-light)", marginBottom: "4px", fontSize: "0.95rem" }}>{activeTab === 'mascot_dm' ? 'Response' : 'Market Reality'}</h4>
-                          <p style={{ color: "#ddd", marginBottom: "15px", fontSize: "0.9rem", lineHeight: "1.5" }}>{msg.exists}</p>
+                               <p style={{ fontStyle: "italic", color: "#aaa", marginBottom: "15px", paddingBottom:"10px", borderBottom: "1px solid rgba(255,255,255,0.1)", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                                  <span style={{ color: "var(--primary-light)" }}>📊</span> Analysis for: "{msg.ideaPrompt}"
+                               </p>
+                               
+                               <h4 style={{ color: "var(--primary-light)", marginBottom: "6px", fontSize: "1rem", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px" }}>
+                                  {activeTab === 'mascot_dm' ? 'Insights' : 'Market Reality'}
+                               </h4>
+                               <p style={{ color: "#fff", marginBottom: "20px", fontSize: "0.95rem", lineHeight: "1.6" }}>{msg.exists}</p>
 
-                          {msg.uniquenessTips && (
-                            <>
-                              <h4 style={{ color: "var(--primary-light)", marginBottom: "4px", fontSize: "0.95rem" }}>Uniqueness Tips</h4>
-                              <p style={{ color: "#ddd", marginBottom: "15px", fontSize: "0.9rem", lineHeight: "1.5", whiteSpace: "pre-wrap" }}>{msg.uniquenessTips}</p>
-                            </>
-                          )}
+                               {msg.uniquenessTips && (
+                                 <>
+                                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                                      <span style={{ fontSize: "1.2rem" }}>💡</span>
+                                      <h4 style={{ color: "var(--primary-light)", margin: 0, fontSize: "1rem", fontWeight: "700" }}>Killer Edge Tips</h4>
+                                   </div>
+                                   <p style={{ color: "#eee", marginBottom: "20px", fontSize: "0.95rem", lineHeight: "1.6", whiteSpace: "pre-wrap", paddingLeft: "12px", borderLeft: "2px solid var(--primary)" }}>{msg.uniquenessTips}</p>
+                                 </>
+                               )}
 
-                          {msg.basicStructure && (
-                            <>
-                              <h4 style={{ color: "var(--primary-light)", marginBottom: "4px", fontSize: "0.95rem" }}>Implementation Structure</h4>
-                              <p style={{ color: "#ddd", fontSize: "0.9rem", whiteSpace: "pre-wrap", lineHeight: "1.5", background: "rgba(0,0,0,0.3)", padding: "10px", borderRadius: "6px", fontFamily: "monospace" }}>{msg.basicStructure}</p>
-                            </>
+                               {msg.basicStructure && (
+                                 <>
+                                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                                      <span style={{ fontSize: "1.2rem" }}>🛠️</span>
+                                      <h4 style={{ color: "var(--primary-light)", margin: 0, fontSize: "1rem", fontWeight: "700" }}>Zero-to-One Roadmap</h4>
+                                   </div>
+                                   <div style={{ color: "#fff", fontSize: "0.95rem", whiteSpace: "pre-wrap", lineHeight: "1.6", background: "rgba(0,0,0,0.5)", padding: "15px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)", position: "relative", overflow: "hidden" }}>
+                                      <div style={{ position: "absolute", top: 0, right: 0, padding: "4px 8px", background: "var(--primary)", fontSize: "0.7rem", fontWeight: "bold" }}>EXECUTION PLAN</div>
+                                      {msg.basicStructure}
+                                   </div>
+                                 </>
+                               )}
+                            </div>
                           )}
                        </div>
                     )}
