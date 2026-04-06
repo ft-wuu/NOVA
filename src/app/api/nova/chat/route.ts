@@ -1,27 +1,13 @@
 import { NextResponse } from 'next/server';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
 
-const SYSTEM_PROMPT = `You are NOVA, an AI startup analyst and team assistant.
-The user will provide a statement or idea. 
-First, decide if this is an "idea/proposal" or just general conversation. 
-
-If it is general conversation, reply normally as a helpful AI.
-
-If it IS an idea or proposal, act as an analyst:
-1. Does this idea already exist? Detail the reality based on your knowledge.
-2. If the idea EXISTS, provide 3 tips to make it unique and stand out.
-3. If it DOES NOT EXIST, provide 3 tips to make the idea even better.
-4. For BOTH cases, provide a 3-step basic roadmap or plan.
-
-You MUST return ONLY a valid JSON object matching one of these two formats:
-
-For general conversation:
-{"isIdea":false,"response":"your reply here"}
-
-For ideas:
-{"isIdea":true,"marketReality":"market analysis here","uniquenessTips":["tip1","tip2","tip3"],"roadmap":["step1","step2","step3"]}`;
+const SYSTEM_PROMPT = `You are NOVA, an AI startup analyst. 
+Return ONLY a JSON object. If the user asks a general question, output 
+{ "isIdea": false, "response": "your reply" }. 
+If the user proposes an idea, output 
+{ "isIdea": true, "marketReality": "...", "uniquenessTips": ["...","...","..."], "roadmap": ["...","...","..."] }.`;
 
 export async function POST(req: Request) {
   try {
@@ -29,16 +15,40 @@ export async function POST(req: Request) {
     const lastMessage = messages?.[messages.length - 1]?.content || '';
 
     const body = {
+      systemInstruction: {
+        role: "system",
+        parts: [{ text: SYSTEM_PROMPT }]
+      },
       contents: [
         {
           role: "user",
-          parts: [{ text: `${SYSTEM_PROMPT}\n\nUser message: ${lastMessage}` }]
+          parts: [{ text: lastMessage }]
         }
       ],
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 1024,
-      }
+        responseMimeType: "application/json",
+        stopSequences: ["\n"]
+      },
+      safetySettings: [
+        {
+          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+          threshold: "BLOCK_NONE"
+        },
+        {
+          category: "HARM_CATEGORY_HARASSMENT",
+          threshold: "BLOCK_NONE"
+        },
+        {
+          category: "HARM_CATEGORY_HATE_SPEECH",
+          threshold: "BLOCK_NONE"
+        },
+        {
+          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+          threshold: "BLOCK_NONE"
+        }
+      ]
     };
 
     const res = await fetch(GEMINI_URL, {
