@@ -113,43 +113,48 @@ export default function ServerWorkspace() {
       starred: false
     };
 
+    const targetChannel = activeTab !== 'starred' ? activeTab : 'general-chat';
+    
     // Save user message to the active channel
-    await addDoc(collection(db, `servers/${id}/channels/${activeTab !== 'starred' ? activeTab : 'general-chat'}/messages`), payload);
+    await addDoc(collection(db, `servers/${id}/channels/${targetChannel}/messages`), payload);
 
-    if (activeTab === "nova-ai" && messageContent.trim()) {
-      if (messageContent.toLowerCase() === "@nova-ai") {
-         setIsBotAwake(true);
-         const botReport = {
-          sender: "NOVA Bot",
-          type: "bot_report",
-          ideaPrompt: "Awakening Sequence",
-          exists: "I am Online.",
-          uniquenessTips: "I am now actively listening to this channel! Any message you type here will be automatically analyzed.",
-          basicStructure: "Type `!@nova-ai` whenever you want me to go back to sleep.",
-          timestamp: serverTimestamp(),
-          starred: false
-         };
-         await addDoc(collection(db, `servers/${id}/channels/nova-ai/messages`), botReport);
-      } else if (messageContent.toLowerCase() === "!@nova-ai") {
-         setIsBotAwake(false);
-         const botReport = {
-          sender: "NOVA Bot",
-          type: "bot_report",
-          ideaPrompt: "Sleep Sequence",
-          exists: "I am Offline.",
-          uniquenessTips: "I will no longer respond to your messages in this channel.",
-          basicStructure: "Type `@nova-ai` to wake me up again.",
-          timestamp: serverTimestamp(),
-          starred: false
-         };
-         await addDoc(collection(db, `servers/${id}/channels/nova-ai/messages`), botReport);
-      } else if (isBotAwake) {
-         triggerBotAnalysis(messageContent);
-      }
+    const lowerContent = messageContent.toLowerCase();
+    
+    // Intercept if they used the @nova-ai tag, or if the bot is awake in the nova-ai channel
+    if (lowerContent.includes("@nova-ai") || (activeTab === "nova-ai" && isBotAwake)) {
+        let prompt = messageContent;
+        
+        if (lowerContent.includes("@nova-ai")) {
+             prompt = messageContent.replace(/@nova-ai/gi, '').trim();
+        }
+
+        if (prompt.toLowerCase() === "sleep" || prompt.toLowerCase() === "stop" || prompt.toLowerCase() === "!@nova-ai") {
+             setIsBotAwake(false);
+             const botReport = {
+                 sender: "NOVA Bot", type: "bot_report", ideaPrompt: "Sleep Sequence",
+                 exists: "I am Offline.", uniquenessTips: "I will no longer auto-respond to every message.",
+                 basicStructure: "Tag `@nova-ai` anytime to ask a question.",
+                 timestamp: serverTimestamp(), starred: false
+             };
+             await addDoc(collection(db, `servers/${id}/channels/${targetChannel}/messages`), botReport);
+        } else if (prompt.length === 0 && lowerContent.includes("@nova-ai")) {
+             setIsBotAwake(true);
+             const botReport = {
+                 sender: "NOVA Bot", type: "bot_report", ideaPrompt: "Awakening Sequence",
+                 exists: "I am Online and listening to this channel!", 
+                 uniquenessTips: "Any message you type here will now be automatically analyzed.",
+                 basicStructure: "Type `@nova-ai sleep` whenever you want me to stop responding.",
+                 timestamp: serverTimestamp(), starred: false
+             };
+             await addDoc(collection(db, `servers/${id}/channels/${targetChannel}/messages`), botReport);
+        } else if (prompt.trim().length > 0) {
+             // User typed a prompt
+             triggerBotAnalysis(prompt, targetChannel);
+        }
     }
   };
 
-  const triggerBotAnalysis = async (prompt: string) => {
+  const triggerBotAnalysis = async (prompt: string, targetChannel: string) => {
     setIsBotTyping(true);
     
     try {
@@ -191,7 +196,7 @@ export default function ServerWorkspace() {
         starred: false
       };
       
-      await addDoc(collection(db, `servers/${id}/channels/nova-ai/messages`), botReport);
+      await addDoc(collection(db, `servers/${id}/channels/${targetChannel}/messages`), botReport);
     } catch (error) {
       console.error("Error analyzing idea:", error);
       const errorReport = {
@@ -204,7 +209,7 @@ export default function ServerWorkspace() {
         timestamp: serverTimestamp(),
         starred: false
       };
-      await addDoc(collection(db, `servers/${id}/channels/nova-ai/messages`), errorReport);
+      await addDoc(collection(db, `servers/${id}/channels/${targetChannel}/messages`), errorReport);
     } finally {
       setIsBotTyping(false);
     }
