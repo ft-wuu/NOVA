@@ -76,13 +76,13 @@ export default function Lobby() {
             }
         }
 
-        // Create the master server document
-        await setDoc(doc(db, "servers", generatedCode), {
+        // Create the master server document (run in background, do not await it so it never freezes UI)
+        setDoc(doc(db, "servers", generatedCode), {
             name: serverName,
             iconUrl: iconUrl,
             createdBy: displayName,
             createdAt: serverTimestamp()
-        });
+        }).catch(err => console.warn("Firebase root write ignored: ", err));
 
         saveLocalServer({ id: generatedCode, name: serverName, iconUrl });
         setInviteCode(generatedCode);
@@ -102,15 +102,22 @@ export default function Lobby() {
     try {
         const sId = joinCode.toUpperCase();
         
-        // Fetch master doc to get name/icon for UI
-        const sDoc = await getDoc(doc(db, "servers", sId));
-        if (sDoc.exists()) {
-            const data = sDoc.data();
-            saveLocalServer({ id: sId, name: data.name || sId, iconUrl: data.iconUrl || "" });
-        } else {
-            saveLocalServer({ id: sId, name: sId, iconUrl: "" });
+        let fetchedName = sId;
+        let fetchedIcon = "";
+
+        // Fetch master doc to get name/icon for UI softly
+        try {
+            const sDoc = await getDoc(doc(db, "servers", sId));
+            if (sDoc.exists()) {
+                const data = sDoc.data();
+                fetchedName = data.name || sId;
+                fetchedIcon = data.iconUrl || "";
+            }
+        } catch (e) {
+             console.warn("Firebase root read ignored: ", e);
         }
 
+        saveLocalServer({ id: sId, name: fetchedName, iconUrl: fetchedIcon });
         await registerMember(sId, displayName);
         router.push(`/server/${sId}`);
     } catch(err: any) {
