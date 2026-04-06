@@ -415,11 +415,11 @@ export default function ServerWorkspace() {
           </button>
       </div>
 
-      <div style={{ width: "72px", backgroundColor: "var(--background)", borderRight: "1px solid var(--glass-border)", display: "flex", flexDirection: "column", alignItems: "center", padding: "15px 0", gap: "15px", zIndex: 100, flexShrink: 0 }}>
+      <div style={{ width: "72px", backgroundColor: "#020205", borderRight: "1px solid var(--glass-border)", display: "flex", flexDirection: "column", alignItems: "center", padding: "15px 0", gap: "15px", zIndex: 100, flexShrink: 0 }}>
          {/* Direct Message (NOVA AI Mascot) */}
          <div 
             onClick={() => setActiveTab('mascot_dm')}
-            style={{ width: "48px", height: "48px", borderRadius: activeTab === 'mascot_dm' ? "16px" : "50%", background: "var(--glass)", display: "flex", justifyContent: "center", alignItems: "center", cursor: "pointer", transition: "all 0.2s", overflow: "hidden", border: activeTab === 'mascot_dm' ? "2px solid var(--primary-light)" : "none" }}
+            style={{ width: "48px", height: "48px", borderRadius: activeTab === 'mascot_dm' ? "16px" : "50%", background: "var(--glass)", display: "flex", justifyContent: "center", alignItems: "center", cursor: "pointer", transition: "all 0.2s", overflow: "hidden", border: activeTab === 'mascot_dm' ? "2px solid var(--primary-light)" : "none", boxShadow: activeTab === 'mascot_dm' ? "var(--card-glow)" : "none" }}
             title="Direct Message NOVA Mascot"
          >
              <img src="/nova_mascot.png" alt="NOVA Mascot" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -456,15 +456,15 @@ export default function ServerWorkspace() {
       </div>
 
       {/* 2. Inner Left Sidebar - Channels */}
-      <div style={{ width: "240px", borderRight: "1px solid var(--glass-border)", background: "var(--sidebar-bg)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
+      <div style={{ width: "240px", borderRight: "1px solid var(--glass-border)", background: "#050505", display: "flex", flexDirection: "column", flexShrink: 0 }}>
         <div style={{ padding: "20px", borderBottom: "1px solid var(--glass-border)" }}>
            <h3 style={{ color: "var(--primary-light)", letterSpacing: "1px", display: "flex", alignItems: "center", gap: "8px", fontSize: "1rem" }}>
              <span style={{ fontSize: "1.2rem" }}>✨</span>
              {activeTab === 'mascot_dm' ? "NOVA DIRECT" : "WORKSPACE"}
            </h3>
-           <p style={{ fontSize: "0.75rem", color: "#888", marginTop: "5px" }}>
-             {activeTab === 'mascot_dm' ? "AI Assistant" : `ID: ${id}`}
-           </p>
+            <p style={{ fontSize: "0.65rem", color: "var(--primary-light)", marginTop: "5px", textTransform: "uppercase", fontWeight: "800", letterSpacing: "1px" }}>
+              {activeTab === 'mascot_dm' ? "Deep Space Assistant" : `Core Protocol: ${id}`}
+            </p>
         </div>
 
         <div style={{ padding: "20px", flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -483,7 +483,7 @@ export default function ServerWorkspace() {
                  Ask NOVA AI
               </button>
 
-              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "5px", textTransform: "uppercase", fontWeight: "bold" }}>Text Channels</p>
+              <p style={{ fontSize: "0.65rem", color: "var(--text-muted)", marginBottom: "8px", textTransform: "uppercase", fontWeight: "900", letterSpacing: "1.5px" }}>Text Channels</p>
               
               <button 
                 className="channel-btn"
@@ -522,7 +522,7 @@ export default function ServerWorkspace() {
       </div>
 
       {/* 3. Main Content View - Chat */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", background: "#08080c" }}>
         
         {/* Chat Header */}
         <div style={{ height: "65px", borderBottom: "1px solid var(--glass-border)", display: "flex", alignItems: "center", padding: "0 20px", background: "var(--header-bg)", backdropFilter: "blur(10px)" }}>
@@ -584,54 +584,73 @@ export default function ServerWorkspace() {
                     )}
 
                     {msg.type === "bot_report" && (
-                       <div style={{ marginTop: "5px" }}>
+                       <div style={{ marginTop: "10px", maxWidth: "800px" }}>
                           {!msg.uniquenessTips && !msg.basicStructure ? (
                             /* Standard Chat Bubble for non-idea replies */
-                            <div style={{ color: "#eee", fontSize: "0.95rem", lineHeight: "1.5", background: "rgba(157, 78, 221, 0.15)", padding: "12px 16px", borderRadius: "0 16px 16px 16px", border: "1px solid rgba(157, 78, 221, 0.3)", display: "inline-block", maxWidth: "85%" }}>
+                            <div style={{ color: "var(--foreground)", fontSize: "0.95rem", lineHeight: "1.6", background: "var(--glass)", padding: "14px 20px", borderRadius: "4px 20px 20px 20px", border: "1px solid var(--glass-border)", display: "inline-block", maxWidth: "85%", boxShadow: "var(--card-glow)" }}>
                                {msg.exists}
                             </div>
                           ) : (
-                            /* Premium Strategy Report for startup ideas */
-                            <div className="glass-panel" style={{ padding: "20px", position: "relative", border: "2px solid var(--primary-light)", background: "rgba(157, 78, 221, 0.08)", borderRadius: "12px", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-                               <div style={{ position: "absolute", top: "15px", right: "15px", display: "flex", gap: "10px" }}>
-                                  <button 
-                                    onClick={() => toggleStar(msg.id, msg.starred, activeTab === 'nova-ai' || activeTab === 'starred')}
-                                    style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: "1.2rem", filter: msg.starred ? "grayscale(0)" : "grayscale(1)" }}
-                                    title="Star this idea"
-                                  >⭐</button>
+                            /* Premium Astro-Strategy Card */
+                            <div className="glass-panel" style={{ padding: "30px", position: "relative", border: "1px solid rgba(157, 78, 221, 0.3)", background: "var(--card)", borderRadius: "16px", boxShadow: "var(--card-glow)", overflow: "hidden" }}>
+                               {/* Decorative Background Glows */}
+                               <div style={{ position: "absolute", top: "-50px", right: "-50px", width: "150px", height: "150px", background: "rgba(157, 78, 221, 0.1)", filter: "blur(40px)", borderRadius: "50%" }}></div>
+                               
+                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "25px" }}>
+                                  <div>
+                                     <h2 style={{ fontSize: "1.8rem", fontWeight: "800", color: "white", margin: 0, letterSpacing: "-0.5px" }}>Strategy Report Card</h2>
+                                     <p style={{ fontSize: "0.7rem", color: "var(--primary-light)", letterSpacing: "2px", fontWeight: "bold", textTransform: "uppercase", marginTop: "4px" }}>Deep Space Intelligence Protocol</p>
+                                  </div>
+                                  <div style={{ padding: "4px 12px", background: "rgba(157, 78, 221, 0.2)", borderRadius: "20px", border: "1px solid var(--primary-light)", fontSize: "0.7rem", color: "white", fontWeight: "bold" }}>
+                                     VERIFIED
+                                  </div>
                                </div>
 
-                               <p style={{ fontStyle: "italic", color: "#aaa", marginBottom: "15px", paddingBottom:"10px", borderBottom: "1px solid rgba(255,255,255,0.1)", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                                  <span style={{ color: "var(--primary-light)" }}>📊</span> Analysis for: "{msg.ideaPrompt}"
-                               </p>
-                               
-                               <h4 style={{ color: "var(--primary-light)", marginBottom: "6px", fontSize: "1rem", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px" }}>
-                                  {activeTab === 'mascot_dm' ? 'Insights' : 'Market Reality'}
-                               </h4>
-                               <p style={{ color: "#fff", marginBottom: "20px", fontSize: "0.95rem", lineHeight: "1.6" }}>{msg.exists}</p>
+                               <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "25px", marginBottom: "30px" }}>
+                                  <div style={{ background: "rgba(0,0,0,0.4)", borderRadius: "12px", padding: "20px", border: "1px solid var(--glass-border)" }}>
+                                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px" }}>
+                                        <h4 style={{ fontSize: "0.75rem", color: "white", textTransform: "uppercase", letterSpacing: "1px" }}>Systemic Performance</h4>
+                                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Q4 Projections</span>
+                                     </div>
+                                     {/* Simple Simulated CSS Graph */}
+                                     <div style={{ display: "flex", alignItems: "flex-end", gap: "6px", height: "60px", marginBottom: "10px" }}>
+                                        {[40, 70, 45, 90, 60, 80, 55].map((h, i) => (
+                                           <div key={i} style={{ flex: 1, height: `${h}%`, background: i === 3 ? "var(--primary-light)" : "rgba(157, 78, 221, 0.3)", borderRadius: "2px", transition: "height 1s ease" }}></div>
+                                        ))}
+                                     </div>
+                                  </div>
+                                  <div style={{ background: "rgba(0,0,0,0.4)", borderRadius: "12px", padding: "20px", border: "1px solid var(--glass-border)" }}>
+                                     <h4 style={{ fontSize: "0.75rem", color: "white", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>Security Protocol</h4>
+                                     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem" }}><span style={{ color: "var(--text-muted)" }}>Encryption:</span> <span style={{ color: "white", fontWeight: "bold" }}>AES-256</span></div>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem" }}><span style={{ color: "var(--text-muted)" }}>Firewall:</span> <span style={{ color: "var(--primary-light)", fontWeight: "bold" }}>OPTIMAL</span></div>
+                                     </div>
+                                  </div>
+                               </div>
 
-                               {msg.uniquenessTips && (
-                                 <>
-                                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                                      <span style={{ fontSize: "1.2rem" }}>💡</span>
-                                      <h4 style={{ color: "var(--primary-light)", margin: 0, fontSize: "1rem", fontWeight: "700" }}>Killer Edge Tips</h4>
-                                   </div>
-                                   <p style={{ color: "#eee", marginBottom: "20px", fontSize: "0.95rem", lineHeight: "1.6", whiteSpace: "pre-wrap", paddingLeft: "12px", borderLeft: "2px solid var(--primary)" }}>{msg.uniquenessTips}</p>
-                                 </>
-                               )}
+                               <div style={{ marginBottom: "25px" }}>
+                                  <h4 style={{ color: "var(--primary-light)", fontSize: "0.8rem", fontWeight: "900", textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: "8px" }}>Collaborative Market Sync</h4>
+                                  <p style={{ color: "var(--foreground)", fontSize: "0.95rem", lineHeight: "1.6" }}>{msg.exists}</p>
+                               </div>
 
-                               {msg.basicStructure && (
-                                 <>
-                                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                                      <span style={{ fontSize: "1.2rem" }}>🛠️</span>
-                                      <h4 style={{ color: "var(--primary-light)", margin: 0, fontSize: "1rem", fontWeight: "700" }}>Zero-to-One Roadmap</h4>
-                                   </div>
-                                   <div style={{ color: "#fff", fontSize: "0.95rem", whiteSpace: "pre-wrap", lineHeight: "1.6", background: "rgba(0,0,0,0.5)", padding: "15px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)", position: "relative", overflow: "hidden" }}>
-                                      <div style={{ position: "absolute", top: 0, right: 0, padding: "4px 8px", background: "var(--primary)", fontSize: "0.7rem", fontWeight: "bold" }}>EXECUTION PLAN</div>
-                                      {msg.basicStructure}
-                                   </div>
-                                 </>
-                               )}
+                               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                                  {msg.uniquenessTips && (
+                                     <div style={{ borderLeft: "2px solid var(--primary-light)", paddingLeft: "15px" }}>
+                                        <h4 style={{ color: "white", fontSize: "0.8rem", fontWeight: "800", textTransform: "uppercase", marginBottom: "8px" }}>Killer Edge</h4>
+                                        <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", lineHeight: "1.5", whiteSpace: "pre-wrap" }}>{msg.uniquenessTips}</p>
+                                     </div>
+                                  )}
+                                  {msg.basicStructure && (
+                                     <div style={{ borderLeft: "2px solid var(--primary-light)", paddingLeft: "15px" }}>
+                                        <h4 style={{ color: "white", fontSize: "0.8rem", fontWeight: "800", textTransform: "uppercase", marginBottom: "8px" }}>Implementation</h4>
+                                        <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", lineHeight: "1.5", whiteSpace: "pre-wrap" }}>{msg.basicStructure}</p>
+                                     </div>
+                                  )}
+                               </div>
+
+                               <div style={{ position: "absolute", bottom: "15px", right: "20px" }}>
+                                  <button onClick={() => toggleStar(msg.id, msg.starred, true)} style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: "1.2rem", filter: msg.starred ? "none" : "grayscale(1)" }}>⭐</button>
+                               </div>
                             </div>
                           )}
                        </div>
@@ -697,9 +716,9 @@ export default function ServerWorkspace() {
 
       {/* 4. Right Sidebar - Members */}
       {activeTab !== "mascot_dm" && (
-        <div style={{ width: "240px", borderLeft: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.6)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
+        <div style={{ width: "240px", borderLeft: "1px solid var(--glass-border)", background: "#050505", display: "flex", flexDirection: "column", flexShrink: 0 }}>
            <div style={{ padding: "20px 20px 10px 20px" }}>
-              <h4 style={{ fontSize: "0.8rem", color: "#888", textTransform: "uppercase", letterSpacing: "0.5px" }}>MEMBERS — {members.length}</h4>
+              <h4 style={{ fontSize: "0.65rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1.5px", fontWeight: "900" }}>SYNC STATUS — {members.length}</h4>
            </div>
            
            <div style={{ padding: "10px", overflowY: "auto", flex: 1 }}>

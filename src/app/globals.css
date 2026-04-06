@@ -1,40 +1,42 @@
 :root {
-  /* Dark Mode (Midnight Obsidian) */
-  --background: #020008;
-  --foreground: #ffffff;
+  /* Astro-Premium Dark Mode */
+  --background: #050505;
+  --foreground: #f8f9fa;
   --primary: #9d4edd;
   --primary-light: #c77dff;
   --secondary: #3c096c;
   --accent: #e0aaff;
-  --glass: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-hover: rgba(255, 255, 255, 0.08);
-  --card: rgba(13, 13, 20, 0.6);
-  --input-bg: rgba(0, 0, 0, 0.3);
-  --text-muted: #888;
-  --header-bg: rgba(2, 0, 8, 0.7);
-  --sidebar-bg: rgba(0, 0, 0, 0.6);
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-hover: rgba(255, 255, 255, 0.06);
+  --card: #0d0d14;
+  --card-glow: 0 0 20px rgba(157, 78, 221, 0.15);
+  --input-bg: #0a0a0f;
+  --text-muted: #6c757d;
+  --header-bg: rgba(5, 5, 5, 0.8);
+  --sidebar-bg: #0a0a10;
   --gradient: linear-gradient(135deg, var(--primary), var(--secondary));
   --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --icon-filter: invert(1);
 }
 
 .light {
-  /* Light Mode (Crystal Frost) */
-  --background: #f1f5f9;
-  --foreground: #1a1a2e;
+  /* Star-White Light Mode */
+  --background: #f8f9fa;
+  --foreground: #0d0d14;
   --primary: #7b2cbf;
   --primary-light: #9d4edd;
   --secondary: #e0aaff;
   --accent: #3c096c;
   --glass: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border: rgba(0, 0, 0, 0.05);
   --glass-hover: rgba(255, 255, 255, 0.9);
-  --card: rgba(255, 255, 255, 0.8);
-  --input-bg: #ffffff;
-  --text-muted: #64748b;
-  --header-bg: rgba(241, 245, 249, 0.8);
-  --sidebar-bg: rgba(255, 255, 255, 0.5);
+  --card: #ffffff;
+  --card-glow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  --input-bg: #fdfdfd;
+  --text-muted: #6c757d;
+  --header-bg: rgba(248, 249, 250, 0.8);
+  --sidebar-bg: #f1f3f5;
   --gradient: linear-gradient(135deg, var(--primary), #5a189a);
   --icon-filter: invert(0);
 }
