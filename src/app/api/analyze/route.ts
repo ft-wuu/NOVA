@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || '', // Make sure to set this in .env.local
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(req: Request) {
   try {
@@ -19,40 +17,32 @@ Return your response strictly as a JSON object with the exact following keys. Do
   "basicStructure": "A high-level technical structure or knowledge implementation steps."
 }`;
 
-    const response = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20240620",
-      max_tokens: 1000,
-      temperature: 0.5,
-      system: systemPrompt,
-      messages: [
-        { role: "user", content: `Here is the idea: "${prompt}"` }
-      ]
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction: systemPrompt,
+      generationConfig: { responseMimeType: "application/json" }
     });
 
-    // Extract text content from Claude's response
-    const textContent = response.content?.[0];
-    let text = "{}";
-    if (textContent?.type === "text") {
-      text = textContent.text;
-    }
-    
+    const result = await model.generateContent(`Here is the idea: "${prompt}"`);
+    const text = result.response.text();
+
     let parsedData = {};
     try {
-        // Strip markdown code block framing if it exists
-        const cleanText = text.replace(/^```json/m, '').replace(/^```/m, '').replace(/```$/m, '').trim();
-        parsedData = JSON.parse(cleanText);
+      const match = text.match(/\{[\s\S]*\}/);
+      const cleanText = match ? match[0] : text;
+      parsedData = JSON.parse(cleanText);
     } catch(e) {
-        console.error("Failed to parse Claude output:", text);
-        parsedData = {
-           exists: "Could not perfectly structure the AI response perfectly.",
-           uniquenessTips: "Please try again.",
-           basicStructure: text
-        };
+      console.error("Failed to parse Gemini output:", text);
+      parsedData = {
+        exists: "Could not perfectly structure the AI response.",
+        uniquenessTips: "Please try again.",
+        basicStructure: text
+      };
     }
 
     return NextResponse.json(parsedData);
-  } catch (error) {
-    console.error("Claude API Error:", error);
-    return NextResponse.json({ error: 'Failed to analyze idea via Claude' }, { status: 500 });
+  } catch (error: any) {
+    console.error("Gemini API Error:", error);
+    return NextResponse.json({ error: error.message || 'Failed to analyze idea via Gemini' }, { status: 500 });
   }
 }
