@@ -18,9 +18,8 @@ Return your response strictly as a JSON object with the exact following keys. Do
 }`;
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-pro",
       systemInstruction: systemPrompt,
-      generationConfig: { responseMimeType: "application/json" }
     });
 
     const result = await model.generateContent(`Here is the idea: "${prompt}"`);

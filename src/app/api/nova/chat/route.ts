@@ -38,9 +38,8 @@ OR
     const conversationContext = messages.slice(-20).map((m: any) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
     
     const model = genAI.getGenerativeModel({ 
-       model: "gemini-1.5-flash",
+       model: "gemini-pro",
        systemInstruction: systemPrompt,
-       generationConfig: { responseMimeType: "application/json" }
     });
 
     const result = await model.generateContent(conversationContext);
