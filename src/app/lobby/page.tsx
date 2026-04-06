@@ -159,48 +159,50 @@ export default function Lobby() {
   };
 
   return (
-    <main style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: "20px" }}>
-      <header className="header" style={{ position: "absolute" }}>
-        <div className="logo">NOVA <span>.AI</span></div>
-        <button onClick={handleLogout} className="nova-button secondary">Clear Stored Session</button>
+    <main style={{ minHeight: "100vh", background: "var(--background)", display: "flex", justifyContent: "center", alignItems: "center", padding: "20px", transition: "background 0.5s ease" }}>
+      <header className="header">
+        <div className="logo" style={{ color: "var(--foreground)" }}>NOVA <span>.AI</span></div>
+        <button onClick={handleLogout} className="nova-button secondary">Clear Session</button>
       </header>
 
       <div style={{ display: "flex", gap: "40px", flexWrap: "wrap", justifyContent: "center", width: "100%", maxWidth: "1000px", marginTop: "80px" }}>
         
         {/* Create Server */}
-        <div className="glass-panel" style={{ flex: "1 1 400px", display: "flex", flexDirection: "column", gap: "15px", animation: "fadeInUp 0.5s ease-out forwards" }}>
+        <div className="glass-panel" style={{ flex: "1 1 400px", display: "flex", flexDirection: "column", gap: "15px", animation: "fadeInUp 0.5s ease-out forwards", background: "var(--card)", border: "1px solid var(--glass-border)" }}>
           <h2 style={{ color: "var(--primary-light)" }}>Create a Workspace</h2>
-          <p style={{ color: "#aaa", fontSize: "0.9rem" }}>Start a new AI-powered brain-trust.</p>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>Start a new AI-powered brain-trust.</p>
 
           <div>
-            <label style={{ display: "block", marginBottom: "8px", color: "#ccc", fontSize: "0.9rem" }}>Your Display Name</label>
+            <label style={{ display: "block", marginBottom: "8px", color: "var(--text-muted)", fontSize: "0.9rem" }}>Your Display Name</label>
             <input 
                type="text" 
                placeholder="How should your team see you?" 
                value={displayName}
                onChange={(e) => setDisplayName(e.target.value)}
                disabled={isUploading}
+               style={{ background: "var(--input-bg)", color: "var(--foreground)", border: "1px solid var(--glass-border)" }}
             />
           </div>
 
           <div>
-            <label style={{ display: "block", marginBottom: "8px", color: "#ccc", fontSize: "0.9rem" }}>Server Name</label>
+            <label style={{ display: "block", marginBottom: "8px", color: "var(--text-muted)", fontSize: "0.9rem" }}>Server Name</label>
             <input 
                type="text" 
                placeholder="e.g. Next Big Tech" 
                value={serverName}
                onChange={(e) => setServerName(e.target.value)}
                disabled={isUploading}
+               style={{ background: "var(--input-bg)", color: "var(--foreground)", border: "1px solid var(--glass-border)" }}
             />
           </div>
           
           <div>
-            <label style={{ display: "block", marginBottom: "8px", color: "#ccc", fontSize: "0.9rem" }}>Server Icon (Optional)</label>
+            <label style={{ display: "block", marginBottom: "8px", color: "var(--text-muted)", fontSize: "0.9rem" }}>Server Icon (Optional)</label>
             <input 
                type="file" 
                accept="image/*"
                onChange={(e) => setServerIconFile(e.target.files ? e.target.files[0] : null)}
-               style={{ border: "1px dashed #555", padding: "10px", width: "100%", color: "#ccc", borderRadius: "6px" }}
+               style={{ border: "1px dashed var(--glass-border)", padding: "10px", width: "100%", color: "var(--text-muted)", borderRadius: "6px", background: "var(--input-bg)" }}
                disabled={isUploading}
             />
           </div>
@@ -208,7 +210,7 @@ export default function Lobby() {
           {inviteCode ? (
              <div style={{ background: "rgba(157, 78, 221, 0.1)", border: "1px solid var(--primary)", padding: "15px", borderRadius: "8px", marginTop: "10px" }}>
                <p style={{ color: "var(--primary-light)", fontSize: "0.9rem", marginBottom: "5px" }}>Invite Code Generated!</p>
-               <h3 style={{ letterSpacing: "3px" }}>{inviteCode}</h3>
+               <h3 style={{ letterSpacing: "3px", color: "var(--foreground)" }}>{inviteCode}</h3>
                <button onClick={navigateToServer} className="nova-button" style={{ width: "100%", marginTop: "15px" }}>Enter Workspace</button>
              </div>
           ) : (
@@ -219,29 +221,31 @@ export default function Lobby() {
         </div>
 
         {/* Join Server */}
-        <div className="glass-panel delay-1" style={{ flex: "1 1 400px", display: "flex", flexDirection: "column", gap: "20px", animation: "fadeInUp 0.5s ease-out forwards" }}>
+        <div className="glass-panel" style={{ flex: "1 1 400px", display: "flex", flexDirection: "column", gap: "20px", animation: "fadeInUp 0.5s ease-out forwards", background: "var(--card)", border: "1px solid var(--glass-border)" }}>
           <h2 style={{ color: "var(--accent)" }}>Join a Workspace</h2>
-          <p style={{ color: "#aaa", fontSize: "0.9rem" }}>Got an invite code? Enter it below.</p>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>Got an invite code? Enter it below.</p>
 
           <div>
-            <label style={{ display: "block", marginBottom: "8px", color: "#ccc", fontSize: "0.9rem" }}>Display Name</label>
+            <label style={{ display: "block", marginBottom: "8px", color: "var(--text-muted)", fontSize: "0.9rem" }}>Display Name</label>
             <input 
                type="text" 
                placeholder="How should we call you?" 
-               value={displayName} // Sharing display name state for simplicity, normally separate but works here.
+               value={displayName}
                onChange={(e) => setDisplayName(e.target.value)}
                disabled={isUploading}
+               style={{ background: "var(--input-bg)", color: "var(--foreground)", border: "1px solid var(--glass-border)" }}
             />
           </div>
 
           <div>
-            <label style={{ display: "block", marginBottom: "8px", color: "#ccc", fontSize: "0.9rem" }}>Server Invite Code</label>
+            <label style={{ display: "block", marginBottom: "8px", color: "var(--text-muted)", fontSize: "0.9rem" }}>Server Invite Code</label>
             <input 
                type="text" 
                placeholder="e.g. X7B9K2" 
                value={joinCode}
                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                disabled={isUploading}
+               style={{ background: "var(--input-bg)", color: "var(--foreground)", border: "1px solid var(--glass-border)" }}
             />
           </div>
 

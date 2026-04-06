@@ -415,8 +415,7 @@ export default function ServerWorkspace() {
           </button>
       </div>
 
-      {/* 1. FAR LEFT: Discord-Style Server Sidebar */}
-      <div style={{ width: "72px", backgroundColor: "#020008", borderRight: "1px solid var(--glass-border)", display: "flex", flexDirection: "column", alignItems: "center", padding: "15px 0", gap: "15px", zIndex: 100, flexShrink: 0 }}>
+      <div style={{ width: "72px", backgroundColor: "var(--background)", borderRight: "1px solid var(--glass-border)", display: "flex", flexDirection: "column", alignItems: "center", padding: "15px 0", gap: "15px", zIndex: 100, flexShrink: 0 }}>
          {/* Direct Message (NOVA AI Mascot) */}
          <div 
             onClick={() => setActiveTab('mascot_dm')}
@@ -457,7 +456,7 @@ export default function ServerWorkspace() {
       </div>
 
       {/* 2. Inner Left Sidebar - Channels */}
-      <div style={{ width: "240px", borderRight: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.6)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
+      <div style={{ width: "240px", borderRight: "1px solid var(--glass-border)", background: "var(--sidebar-bg)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
         <div style={{ padding: "20px", borderBottom: "1px solid var(--glass-border)" }}>
            <h3 style={{ color: "var(--primary-light)", letterSpacing: "1px", display: "flex", alignItems: "center", gap: "8px", fontSize: "1rem" }}>
              <span style={{ fontSize: "1.2rem" }}>✨</span>
@@ -470,9 +469,9 @@ export default function ServerWorkspace() {
 
         <div style={{ padding: "20px", flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
           {activeTab === "mascot_dm" ? (
-             <div style={{ textAlign: "center", color: "#aaa", fontSize: "0.85rem", marginTop: "20px" }}>
+             <div style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem", marginTop: "20px" }}>
                 <img src="/nova_mascot.png" alt="Mascot" style={{ width: "80px", height: "80px", borderRadius: "16px", marginBottom: "10px", margin: "0 auto", display: "block" }} />
-                <p>Chat directly with your cute, intelligent AI mascot without disturbing the team.</p>
+                <p style={{ color: "var(--text-muted)" }}>Chat directly with your cute, intelligent AI mascot without disturbing the team.</p>
              </div>
           ) : (
             <>
@@ -484,20 +483,20 @@ export default function ServerWorkspace() {
                  Ask NOVA AI
               </button>
 
-              <p style={{ fontSize: "0.75rem", color: "#666", marginBottom: "5px", textTransform: "uppercase", fontWeight: "bold" }}>Text Channels</p>
+              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "5px", textTransform: "uppercase", fontWeight: "bold" }}>Text Channels</p>
               
               <button 
                 className="channel-btn"
                 onClick={() => setActiveTab("general-chat")}
-                style={{ background: activeTab === "general-chat" ? "var(--glass-hover)" : "transparent", color: activeTab === "general-chat" ? "white" : "#aaa", border: "none", width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: "6px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
+                style={{ background: activeTab === "general-chat" ? "var(--glass-hover)" : "transparent", color: activeTab === "general-chat" ? "var(--foreground)" : "var(--text-muted)", border: "none", width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: "6px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
               >
-                <span style={{ fontSize: "1.1rem", color: "#555" }}>#</span> general-chat
+                <span style={{ fontSize: "1.1rem", color: "var(--text-muted)" }}>#</span> general-chat
               </button>
 
               <button 
                 className="channel-btn"
                 onClick={() => setActiveTab("resources")}
-                style={{ background: activeTab === "resources" ? "var(--glass-hover)" : "transparent", color: activeTab === "resources" ? "white" : "#aaa", border: "none", width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: "6px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
+                style={{ background: activeTab === "resources" ? "var(--glass-hover)" : "transparent", color: activeTab === "resources" ? "var(--foreground)" : "var(--text-muted)", border: "none", width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: "6px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
               >
                 <span style={{ fontSize: "1.1rem" }}>📁</span> resources
               </button>
@@ -516,7 +515,7 @@ export default function ServerWorkspace() {
         </div>
 
         {activeTab !== "mascot_dm" && (
-           <div style={{ padding: "20px", borderTop: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.3)" }}>
+           <div style={{ padding: "20px", borderTop: "1px solid var(--glass-border)", background: "var(--input-bg)" }}>
               <button onClick={handleLeaveServer} className="nova-button secondary" style={{ width: "100%", fontSize: "0.85rem", padding: "8px", borderColor: "#ff4444", color: "#ff4444" }}>Leave Server</button>
            </div>
         )}
@@ -526,12 +525,12 @@ export default function ServerWorkspace() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative" }}>
         
         {/* Chat Header */}
-        <div style={{ height: "65px", borderBottom: "1px solid var(--glass-border)", display: "flex", alignItems: "center", padding: "0 20px", background: "rgba(2, 0, 8, 0.8)", backdropFilter: "blur(10px)" }}>
-           <h3 style={{ fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "8px" }}>
-             {activeTab === "mascot_dm" && <><img src="/nova_mascot.png" alt="Mascot" style={{width: "24px", height:"24px", borderRadius:"6px"}}/> NOVA Mascot <span style={{fontSize: "0.8rem", color: "#888", marginLeft: "10px", fontWeight: "normal"}}>Your personal AI companion.</span></>}
-             {activeTab === "general-chat" && <><span style={{ color: "#666" }}>#</span> general-chat</>}
-             {activeTab === "nova-ai" && <>🤖 nova-ai <span style={{fontSize: "0.8rem", color: "#888", marginLeft: "10px", fontWeight: "normal"}}>Ask the bot to structure your ideas.</span></>}
-             {activeTab === "resources" && <>📁 resources <span style={{fontSize: "0.8rem", color: "#888", marginLeft: "10px", fontWeight: "normal"}}>Share files, images, and videos here.</span></>}
+        <div style={{ height: "65px", borderBottom: "1px solid var(--glass-border)", display: "flex", alignItems: "center", padding: "0 20px", background: "var(--header-bg)", backdropFilter: "blur(10px)" }}>
+           <h3 style={{ fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "8px", color: "var(--foreground)" }}>
+             {activeTab === "mascot_dm" && <><img src="/nova_mascot.png" alt="Mascot" style={{width: "24px", height:"24px", borderRadius:"6px"}}/> NOVA Mascot <span style={{fontSize: "0.8rem", color: "var(--text-muted)", marginLeft: "10px", fontWeight: "normal"}}>Your personal AI companion.</span></>}
+             {activeTab === "general-chat" && <><span style={{ color: "var(--text-muted)" }}>#</span> general-chat</>}
+             {activeTab === "nova-ai" && <><span style={{color: "var(--primary-light)"}}>🤖</span> nova-ai <span style={{fontSize: "0.8rem", color: "var(--text-muted)", marginLeft: "10px", fontWeight: "normal"}}>Ask the bot to structure your ideas.</span></>}
+             {activeTab === "resources" && <>📁 resources <span style={{fontSize: "0.8rem", color: "var(--text-muted)", marginLeft: "10px", fontWeight: "normal"}}>Share files, images, and videos here.</span></>}
              {activeTab === "starred" && <>⭐ Starred AI Reports</>}
            </h3>
         </div>
@@ -539,13 +538,13 @@ export default function ServerWorkspace() {
         {/* Chat Feed */}
         <div style={{ flex: 1, padding: "20px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "24px" }}>
            {messages.length === 0 && (
-             <div style={{ margin: "auto", color: "#666", textAlign: "center", maxWidth: "400px" }}>
-                <h2 style={{ color: "white", marginBottom: "10px" }}>
+             <div style={{ margin: "auto", color: "var(--text-muted)", textAlign: "center", maxWidth: "400px" }}>
+                <h2 style={{ color: "var(--foreground)", marginBottom: "10px" }}>
                    {activeTab === "mascot_dm" ? "Say hi to NOVA!" : `Welcome to #${activeTab}!`}
                 </h2>
                 <p>
                    {activeTab === "mascot_dm" 
-                      ? "This is your private AI playground (like a ChatGPT interface). Ask anything!" 
+                      ? "This is your private AI playground. Ask anything!" 
                       : "This is the beginning of the channel. Send a message to start syncing with your team."}
                 </p>
              </div>
@@ -644,7 +643,7 @@ export default function ServerWorkspace() {
            {isBotTyping && (
               <div style={{ display: "flex", gap: "15px", animation: "fadeInUp 0.3s" }}>
                  <div style={{ width: "45px", height: "45px", borderRadius: activeTab === 'mascot_dm' ? "12px" : "50%", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: "2px solid var(--primary-light)", overflow: "hidden" }}>
-                    {activeTab === 'mascot_dm' ? <img src="/nova_mascot.png" style={{width:"100%"}} /> : "🤖"}
+                    {activeTab === 'mascot_dm' ? <img src="/nova_mascot.png" style={{width:"100%"}} /> : <span style={{color: "var(--foreground)"}}>🤖</span>}
                  </div>
                  <div style={{ color: "var(--primary-light)", fontSize: "0.9rem", display: "flex", alignItems: "center", fontStyle: "italic" }}>
                    NOVA is formulating a response...

@@ -30,11 +30,11 @@ export default function Login() {
   }
 
   return (
-    <main style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: "20px" }}>
-      <div className="glass-panel" style={{ width: "100%", maxWidth: "450px", display: "flex", flexDirection: "column", gap: "20px", textAlign: "center", animation: "fadeInUp 0.5s ease-out forwards" }}>
+    <main style={{ minHeight: "100vh", background: "var(--background)", display: "flex", justifyContent: "center", alignItems: "center", padding: "20px", transition: "background 0.5s ease" }}>
+      <div className="glass-panel" style={{ width: "100%", maxWidth: "450px", display: "flex", flexDirection: "column", gap: "20px", textAlign: "center", animation: "fadeInUp 0.5s ease-out forwards", background: "var(--card)", border: "1px solid var(--glass-border)" }}>
         
         <h2 style={{ fontSize: "2rem", color: "var(--primary-light)", fontWeight: "bold", margin: 0 }}>Join NOVA.AI</h2>
-        <p style={{ color: "#aaa", margin: 0 }}>Refine your ideas. Connect with your team.</p>
+        <p style={{ color: "var(--text-muted)", margin: 0 }}>Refine your ideas. Connect with your team.</p>
 
         {error && <div style={{ color: "#ff4d4d", fontSize: "0.9rem", padding: "10px", background: "rgba(255,0,0,0.1)", borderRadius: "8px" }}>{error}</div>}
 
@@ -52,7 +52,13 @@ export default function Login() {
           className="nova-button secondary" 
           style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}
         >
-          <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" width={24} height={24} style={{ filter: "invert(1)" }} alt="GitHub" />
+          <img 
+            src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" 
+            width={24} 
+            height={24} 
+            style={{ filter: "var(--icon-filter)" }} 
+            alt="GitHub" 
+          />
           Continue with GitHub
         </button>
 
@@ -61,27 +67,38 @@ export default function Login() {
           className="nova-button secondary" 
           style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}
         >
-          <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" width={24} height={24} style={{ filter: "invert(1)" }} alt="Apple" />
+          <img 
+            src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" 
+            width={24} 
+            height={24} 
+            style={{ filter: "var(--icon-filter)" }} 
+            alt="Apple" 
+          />
           Continue with Apple
         </button>
 
         <div style={{ display: "flex", alignItems: "center", margin: "10px 0" }}>
           <div style={{ flex: 1, height: "1px", background: "var(--glass-border)" }} />
-          <span style={{ padding: "0 10px", color: "#666", fontSize: "0.9rem" }}>OR</span>
+          <span style={{ padding: "0 10px", color: "var(--text-muted)", fontSize: "0.9rem" }}>OR</span>
           <div style={{ flex: 1, height: "1px", background: "var(--glass-border)" }} />
         </div>
 
-        <input type="email" placeholder="Email Address" />
+        <input 
+          type="email" 
+          placeholder="Email Address" 
+          style={{ background: "var(--input-bg)", color: "var(--foreground)", border: "1px solid var(--glass-border)" }} 
+        />
         <button onClick={handleEmailLogin} className="nova-button" style={{ width: "100%" }}>Continue with Email</button>
 
-        <p style={{ fontSize: "0.9rem", color: "#888", marginTop: "10px" }}>
+        <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", marginTop: "10px" }}>
           Don't have an account? <span style={{ color: "var(--primary-light)", cursor: "pointer", textDecoration: "underline" }}>Sign up</span>
         </p>
 
-        <Link href="/" style={{ color: "#888", fontSize: "0.8rem", marginTop: "15px", display: "inline-block", alignSelf: "center" }}>
+        <Link href="/" style={{ color: "var(--text-muted)", fontSize: "0.8rem", marginTop: "15px", display: "inline-block", alignSelf: "center", textDecoration: "none" }}>
           ← Back to Home
         </Link>
       </div>
     </main>
   );
 }
+
