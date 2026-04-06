@@ -182,7 +182,7 @@ export default function ServerWorkspace() {
         sender: "NOVA Mascot",
         type: "bot_report",
         ideaPrompt: prompt,
-        exists: data.error ? "🚨 Missing ANTHROPIC_API_KEY. Add it to Vercel Environment Variables." : (data.isIdea ? (data.marketReality || "Hmm...") : (data.generalResponse || "Hey!")),
+        exists: data.error ? `🚨 AI Error: ${data.error}` : (data.isIdea ? (data.marketReality || "Hmm...") : (data.generalResponse || "Hey!")),
         uniquenessTips: data.error ? "" : (data.isIdea ? (data.uniquenessTips?.map((t: string) => "• " + t).join('\n') || "") : ""),
         basicStructure: data.error ? "" : (data.isIdea ? (data.roadmap?.map((t: string, i: number) => `${i+1}. ${t}`).join('\n') || "") : ""),
         timestamp: serverTimestamp(),
@@ -210,9 +210,9 @@ export default function ServerWorkspace() {
       let structureText = "No structure generated.";
 
       if (data.error) {
-          existsText = "🚨 CRITICAL ERROR: The AI API failed to connect. You must add your ANTHROPIC_API_KEY to your Vercel Environment Variables if deployed, or your .env.local file if testing locally.";
-          tipsText = "Missing API Key. Go to console.anthropic.com to get one.";
-          structureText = "1. Get API Key\n2. Open Vercel Project Settings\n3. Add ANTHROPIC_API_KEY to Environment Variables\n4. Redeploy";
+          existsText = `🚨 AI Error: ${data.error}`;
+          tipsText = "Could not process request.";
+          structureText = "1. Verify API Key in Vercel\n2. Verify Anthropic Credit Balance\n3. Redeploy";
       } else if (!data.isIdea) {
           existsText = data.generalResponse || "No response";
           tipsText = "General conversational response. Idea tips not applicable.";
