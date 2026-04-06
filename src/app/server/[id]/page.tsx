@@ -24,6 +24,7 @@ export default function ServerWorkspace() {
   const [uploadProgress, setUploadProgress] = useState(0);
 
   const [recentJoinedMsg, setRecentJoinedMsg] = useState<string | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
   const prevMembersRef = useRef<any[]>([]);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
 
@@ -367,12 +368,48 @@ export default function ServerWorkspace() {
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "var(--background)", position: "relative" }}>
       
-      {/* Toast Notification (Bottom Right) */}
-      {recentJoinedMsg && (
-         <div style={{ position: "absolute", bottom: "30px", right: "30px", background: "var(--primary)", color: "white", padding: "12px 20px", borderRadius: "8px", boxShadow: "0 4px 15px rgba(157, 78, 221, 0.4)", zIndex: 9999, animation: "fadeInUp 0.3s ease-out forwards", fontWeight: "bold", border: "1px solid var(--primary-light)", display: "flex", alignItems: "center", gap: "10px" }}>
-             <span style={{ fontSize: "1.2rem" }}>💬</span> {recentJoinedMsg}
-         </div>
-      )}
+      {/* Notifications Panel & Toggle Button (Bottom Right) */}
+      <div style={{ position: "absolute", bottom: "30px", right: "30px", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "15px" }}>
+          
+          {/* Incoming Join Toast (Shows conditionally when panel is closed) */}
+          {recentJoinedMsg && !showNotifications && (
+             <div style={{ background: "var(--primary)", color: "white", padding: "12px 20px", borderRadius: "8px", boxShadow: "0 4px 15px rgba(157, 78, 221, 0.4)", animation: "fadeInUp 0.3s ease-out forwards", fontWeight: "bold", border: "1px solid var(--primary-light)", display: "flex", alignItems: "center", gap: "10px" }}>
+                 <span style={{ fontSize: "1.2rem" }}>🚀</span> {recentJoinedMsg}
+             </div>
+          )}
+
+          {/* Persistent Notifications Panel */}
+          {showNotifications && (
+             <div className="glass-panel" style={{ width: "320px", maxHeight: "400px", background: "rgba(10, 10, 15, 0.95)", border: "1px solid var(--primary-light)", borderRadius: "12px", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 10px 30px rgba(0,0,0,0.8)", animation: "fadeInUp 0.2s", padding: 0 }}>
+                 <div style={{ padding: "15px", borderBottom: "1px solid var(--glass-border)", background: "rgba(157, 78, 221, 0.1)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                     <h4 style={{ margin: 0, color: "white", display: "flex", alignItems: "center", gap: "8px" }}>🔔 Joining Activity</h4>
+                     <button onClick={() => setShowNotifications(false)} style={{ background: "transparent", border: "none", color: "#aaa", cursor: "pointer", fontSize: "1.2rem" }}>&times;</button>
+                 </div>
+                 <div style={{ flex: 1, overflowY: "auto", padding: "15px", display: "flex", flexDirection: "column", gap: "10px" }} className="hide-scroll">
+                     {messages.filter(m => m.type === 'system_join').reverse().map((msg: any) => (
+                         <div key={msg.id} style={{ background: "var(--glass)", padding: "12px", borderRadius: "8px", borderLeft: "3px solid var(--primary)", fontSize: "0.85rem", color: "#ddd" }}>
+                             <strong style={{ color: "var(--primary-light)" }}>{msg.targetUser}</strong> joined the server.
+                             <div style={{ fontSize: "0.7rem", color: "#666", marginTop: "4px" }}>
+                                 {msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "Recently"}
+                             </div>
+                         </div>
+                     ))}
+                     {messages.filter(m => m.type === 'system_join').length === 0 && (
+                         <div style={{ textAlign: "center", padding: "20px", color: "#666", fontSize: "0.85rem" }}>No one has joined this server yet.</div>
+                     )}
+                 </div>
+             </div>
+          )}
+
+          {/* Toggle FAB Button */}
+          <button 
+             onClick={() => setShowNotifications(!showNotifications)}
+             style={{ width: "56px", height: "56px", borderRadius: "50%", background: "var(--primary)", border: "none", color: "white", fontSize: "24px", cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", boxShadow: "0 4px 15px rgba(157, 78, 221, 0.5)", transition: "all 0.2s" }}
+             title="Server Notifications"
+          >
+             💬
+          </button>
+      </div>
 
       {/* 1. FAR LEFT: Discord-Style Server Sidebar */}
       <div style={{ width: "72px", backgroundColor: "#020008", borderRight: "1px solid var(--glass-border)", display: "flex", flexDirection: "column", alignItems: "center", padding: "15px 0", gap: "15px", zIndex: 100, flexShrink: 0 }}>
