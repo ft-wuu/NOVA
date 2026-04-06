@@ -46,6 +46,15 @@ export default function ServerWorkspace() {
 
     if (!id || !storedUser) return;
 
+    // Mark user as online when they enter the server
+    updateDoc(doc(db, `servers/${id}/members/${storedUser}`), { online: true }).catch(err => console.warn("Online presence ignored:", err));
+
+    // Cleanup presence on tab close or refresh
+    const setOffline = () => {
+        updateDoc(doc(db, `servers/${id}/members/${storedUser}`), { online: false }).catch(() => {});
+    };
+    window.addEventListener("beforeunload", setOffline);
+
     // Fetch live members
     const membersUnsub = onSnapshot(collection(db, `servers/${id}/members`), (snapshot) => {
       const liveMembers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -79,6 +88,8 @@ export default function ServerWorkspace() {
     return () => {
       unsubscribe();
       membersUnsub();
+      setOffline(); // Mark offline immediately on component unmount
+      window.removeEventListener("beforeunload", setOffline);
     };
   }, [id, activeTab, router]);
 
@@ -238,6 +249,18 @@ export default function ServerWorkspace() {
 
   const handleLeaveServer = async () => {
     if (confirm("Are you sure you want to completely leave this server and remove yourself from its member list?")) {
+        
+        // Calculate smart fallback route (go to adjacent server if exists)
+        const index = savedServers.findIndex((s:any) => s.id === id);
+        let nextRoute = '/lobby';
+        if (savedServers.length > 1) {
+            if (index > 0) {
+               nextRoute = `/server/${savedServers[index - 1].id}`; // Go to previous
+            } else {
+               nextRoute = `/server/${savedServers[1].id}`; // Go to next
+            }
+        }
+
         // Optimistically remove from local storage so UI updates instantly
         const saved = savedServers.filter((s:any) => s.id !== id);
         localStorage.setItem("nova_servers", JSON.stringify(saved));
@@ -246,7 +269,7 @@ export default function ServerWorkspace() {
         // Fire and forget delete from Firebase (don't let permission errors block the UI removal)
         deleteDoc(doc(db, `servers/${id}/members/${currentUser}`)).catch(e => console.warn("Firebase member delete ignored: ", e));
         
-        router.push('/lobby');
+        router.push(nextRoute);
     }
   };
 
