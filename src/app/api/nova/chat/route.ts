@@ -24,6 +24,10 @@ const generateMockReply = (message: string) => {
           "Phases 3-4: Closed Beta for 100 early adopters.",
           "Phases 5+: Global scale-up on edge compute."
         ],
+        researchFoundations: [
+          "Scalable Neural Architectures for Low-Latency Systems (2024)",
+          "Nodal Logic in Distributed IDE Environments"
+        ],
         generalResponse: "That is a fascinating concept! I've run a deep-space intelligence scan, and here is how we can refine it."
      };
   }

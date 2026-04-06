@@ -633,7 +633,7 @@ export default function ServerWorkspace() {
                                   <p style={{ color: "var(--foreground)", fontSize: "0.95rem", lineHeight: "1.6" }}>{msg.exists}</p>
                                </div>
 
-                               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: msg.researchFoundations ? "25px" : "0" }}>
                                   {msg.uniquenessTips && (
                                      <div style={{ borderLeft: "2px solid var(--primary-light)", paddingLeft: "15px" }}>
                                         <h4 style={{ color: "white", fontSize: "0.8rem", fontWeight: "800", textTransform: "uppercase", marginBottom: "8px" }}>Killer Edge</h4>
@@ -647,6 +647,21 @@ export default function ServerWorkspace() {
                                      </div>
                                   )}
                                </div>
+
+                               {msg.researchFoundations && msg.researchFoundations.length > 0 && (
+                                 <div style={{ marginTop: "20px", paddingTop: "20px", borderTop: "1px solid var(--glass-border)" }}>
+                                    <h4 style={{ color: "var(--primary-light)", fontSize: "0.7rem", fontWeight: "900", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>Scientific Foundations (External Research)</h4>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                                       {msg.researchFoundations.map((paper: string, idx: number) => (
+                                          <div key={idx} style={{ display: "flex", alignItems: "center", gap: "10px", background: "rgba(255,255,255,0.03)", padding: "10px 14px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                             <span style={{ fontSize: "1rem" }}>📄</span>
+                                             <span style={{ fontSize: "0.85rem", color: "#eee", fontStyle: "italic" }}>{paper}</span>
+                                             <span style={{ marginLeft: "auto", fontSize: "0.7rem", color: "var(--primary-light)", fontWeight: "bold", opacity: 0.6 }}>[SOURCE.PDF]</span>
+                                          </div>
+                                       ))}
+                                    </div>
+                                 </div>
+                               )}
 
                                <div style={{ position: "absolute", bottom: "15px", right: "20px" }}>
                                   <button onClick={() => toggleStar(msg.id, msg.starred, true)} style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: "1.2rem", filter: msg.starred ? "none" : "grayscale(1)" }}>⭐</button>
