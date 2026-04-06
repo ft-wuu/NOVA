@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || ''
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(req: Request) {
   try {
@@ -36,18 +34,17 @@ OR
   "roadmap": ["Step 1", "Step 2", "Step 3"]
 }`;
 
-    const response = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20240620",
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: messages.slice(-20)
+    // Convert chat history into a single structured prompt for Gemini
+    const conversationContext = messages.slice(-20).map((m: any) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
+    
+    const model = genAI.getGenerativeModel({ 
+       model: "gemini-1.5-flash",
+       systemInstruction: systemPrompt,
+       generationConfig: { responseMimeType: "application/json" }
     });
 
-    const textContent = response.content[0];
-    let text = "";
-    if (textContent?.type === "text") {
-      text = textContent.text;
-    }
+    const result = await model.generateContent(conversationContext);
+    const text = result.response.text();
 
     let parsed: any = {};
     try {
@@ -59,7 +56,7 @@ OR
       parsed = { isIdea: false, response: text.replace(/[{"}]/g, '').trim() };
     }
     
-    // Normalize keys just in case Claude names it differently
+    // Normalize keys
     parsed.generalResponse = parsed.generalResponse || parsed.response || parsed.message || parsed.content || "Hey there!";
     
     return NextResponse.json(parsed);
@@ -69,3 +66,4 @@ OR
     return NextResponse.json({ error: error.message || 'Missing API Key or API crashed.' }, { status: 500 });
   }
 }
+

@@ -212,7 +212,7 @@ export default function ServerWorkspace() {
       if (data.error) {
           existsText = `🚨 AI Error: ${data.error}`;
           tipsText = "Could not process request.";
-          structureText = "1. Verify API Key in Vercel\n2. Verify Anthropic Credit Balance\n3. Redeploy";
+          structureText = "1. Get a FREE Gemini API Key from Google AI Studio\n2. Add GEMINI_API_KEY to Vercel\n3. Redeploy";
       } else if (!data.isIdea) {
           existsText = data.generalResponse || "No response";
           tipsText = "General conversational response. Idea tips not applicable.";
