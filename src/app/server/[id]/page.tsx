@@ -57,26 +57,65 @@ export default function ServerWorkspace() {
     };
     window.addEventListener("beforeunload", setOffline);
 
-    // Fetch live members
+    // 1. Guaranteed Local Member Fallback
+    const syncLocalMembers = (incomingFirebaseMembers: any[] = []) => {
+        let localKnown: any[] = [];
+        try {
+            const existing = localStorage.getItem(`nova_workspace_members_${id}`);
+            if (existing) localKnown = JSON.parse(existing);
+        } catch(e) {}
+
+        // Always guarantee currentUser is in the list natively!
+        if (!localKnown.find(m => m.name === storedUser)) {
+            localKnown.push({ id: storedUser, name: storedUser, online: true });
+        } else {
+            // Keep currentUser forced online for their own screen
+            const me = localKnown.find(m => m.name === storedUser);
+            if (me) me.online = true;
+        }
+
+        // Merge incoming Firebase data
+        incomingFirebaseMembers.forEach(live => {
+           const idx = localKnown.findIndex(m => m.name === live.name);
+           if (idx >= 0) {
+               localKnown[idx].online = live.online;
+           } else {
+               localKnown.push({ ...live, online: true });
+               if (live.name !== storedUser) {
+                   setRecentJoinedMsg(`🚀 ${live.name} just joined the workspace!`);
+                   setTimeout(() => setRecentJoinedMsg(null), 5000);
+               }
+           }
+        });
+
+        // Any local member who isn't natively returned from Firebase right now is pushed to 'offline' (except current user)
+        localKnown = localKnown.map(lk => {
+            if (lk.name === storedUser) return lk;
+            if (incomingFirebaseMembers.length > 0 && !incomingFirebaseMembers.find(m => m.name === lk.name)) {
+                return { ...lk, online: false };
+            }
+            return lk; // keep their previous offline state if Firebase is totally disconnected
+        });
+
+        // Ensure current user is ALWAYS placed at the very top of the list!
+        const currentUserObj = localKnown.find(m => m.name === storedUser);
+        const others = localKnown.filter(m => m.name !== storedUser);
+        const sortedMembers = currentUserObj ? [currentUserObj, ...others] : others;
+
+        localStorage.setItem(`nova_workspace_members_${id}`, JSON.stringify(sortedMembers));
+        setMembers(sortedMembers);
+    };
+
+    // Trigger explicit initialization
+    syncLocalMembers([]);
+
+    // 2. Fetch live members (if FireStore works perfectly)
     const membersUnsub = onSnapshot(collection(db, `servers/${id}/members`), (snapshot) => {
       const liveMembers = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
-      
-      // Detect newly joined members for the notification
-      const prev = prevMembersRef.current;
-      if (prev.length > 0 && liveMembers.length > prev.length) {
-         const newMember = liveMembers.find(m => !prev.find(p => p.id === m.id));
-         if (newMember && newMember.name !== storedUser) {
-             setRecentJoinedMsg(`🚀 ${newMember.name} just joined the workspace!`);
-             setTimeout(() => setRecentJoinedMsg(null), 5000); // Hide after 5 seconds
-         }
-      }
-      prevMembersRef.current = liveMembers;
-      setMembers(liveMembers);
+      syncLocalMembers(liveMembers);
     }, (error: any) => {
-       console.error("Snapshot error:", error);
-       if (error.code === 'permission-denied') {
-          alert("CRITICAL FIREBASE ERROR: Your members list is broken because your Firebase Security Rules are locked. Go to Firebase > Firestore > Rules and change it to 'allow read, write: if true;' to fix this.");
-       }
+       console.error("Firebase Security Blocked Member Sync -> Reverting to pure local cache", error);
+       // Instead of alerting and failing, we just rely on syncLocalMembers()!
     });
 
     let q;
@@ -101,6 +140,16 @@ export default function ServerWorkspace() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setMessages(msgs);
+
+      // Failsafe: Add anyone who has ever spoken in the server to the offline members list!
+      const uniqueSenders = Array.from(new Set(msgs.map((m: any) => m.sender)));
+      const inferredMembers = uniqueSenders
+            .filter(name => name !== "NOVA Mascot" && name !== "NOVA Bot" && name !== storedUser)
+            .map(name => ({ id: name, name, online: false }));
+      
+      if (inferredMembers.length > 0) {
+          syncLocalMembers(inferredMembers);
+      }
     });
 
     return () => {
@@ -311,10 +360,10 @@ export default function ServerWorkspace() {
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "var(--background)", position: "relative" }}>
       
-      {/* Toast Notification */}
+      {/* Toast Notification (Bottom Right) */}
       {recentJoinedMsg && (
-         <div style={{ position: "absolute", top: "20px", right: "20px", background: "var(--primary)", color: "white", padding: "12px 20px", borderRadius: "8px", boxShadow: "0 4px 15px rgba(157, 78, 221, 0.4)", zIndex: 9999, animation: "fadeInUp 0.3s ease-out forwards", fontWeight: "bold", border: "1px solid var(--primary-light)" }}>
-             {recentJoinedMsg}
+         <div style={{ position: "absolute", bottom: "30px", right: "30px", background: "var(--primary)", color: "white", padding: "12px 20px", borderRadius: "8px", boxShadow: "0 4px 15px rgba(157, 78, 221, 0.4)", zIndex: 9999, animation: "fadeInUp 0.3s ease-out forwards", fontWeight: "bold", border: "1px solid var(--primary-light)", display: "flex", alignItems: "center", gap: "10px" }}>
+             <span style={{ fontSize: "1.2rem" }}>💬</span> {recentJoinedMsg}
          </div>
       )}
 
