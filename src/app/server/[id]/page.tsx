@@ -331,6 +331,14 @@ export default function ServerWorkspace() {
              </div>
           ) : (
             <>
+              <button 
+                 onClick={() => setActiveTab("mascot_dm")} 
+                 style={{ width: "100%", background: "linear-gradient(90deg, rgba(157, 78, 221, 0.8) 0%, rgba(0, 230, 118, 0.6) 100%)", borderRadius: "8px", color: "white", fontWeight: "bold", padding: "10px 12px", border: "1px solid rgba(255,255,255,0.2)", cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px", boxShadow: "0 4px 15px rgba(157, 78, 221, 0.3)", transition: "all 0.2s" }}
+              >
+                 <img src="/nova_mascot.png" style={{width: "24px", height: "24px", borderRadius: "50%"}} alt="AI" />
+                 Ask NOVA AI
+              </button>
+
               <p style={{ fontSize: "0.75rem", color: "#666", marginBottom: "5px", textTransform: "uppercase", fontWeight: "bold" }}>Text Channels</p>
               
               <button 
@@ -339,14 +347,6 @@ export default function ServerWorkspace() {
                 style={{ background: activeTab === "general-chat" ? "var(--glass-hover)" : "transparent", color: activeTab === "general-chat" ? "white" : "#aaa", border: "none", width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: "6px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
               >
                 <span style={{ fontSize: "1.1rem", color: "#555" }}>#</span> general-chat
-              </button>
-              
-              <button 
-                className="channel-btn"
-                onClick={() => setActiveTab("nova-ai")}
-                style={{ background: activeTab === "nova-ai" ? "var(--glass-hover)" : "transparent", color: activeTab === "nova-ai" ? "var(--primary-light)" : "#aaa", border: "none", width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: "6px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
-              >
-                <span style={{ fontSize: "1.1rem" }}>🤖</span> nova-ai
               </button>
 
               <button 
