@@ -135,8 +135,10 @@ export default function Lobby() {
         saveLocalServer({ id: sId, name: fetchedName, iconUrl: fetchedIcon });
         
         setIsUploading(false); // Explicitly unlock UI
-        
+        // Give Firebase background tasks a brief window to flush before unmounting!
         registerMember(sId, displayName).catch(e => console.warn("Register ignored: ", e));
+        
+        await new Promise(resolve => setTimeout(resolve, 800));
         router.push(`/server/${sId}`);
     } catch(err: any) {
         console.error("Error joining server:", err);

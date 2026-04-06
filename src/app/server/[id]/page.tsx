@@ -182,9 +182,9 @@ export default function ServerWorkspace() {
         sender: "NOVA Mascot",
         type: "bot_report",
         ideaPrompt: prompt,
-        exists: data.type === 'general' ? (data.content || "Hey there!") : (data.data?.marketReality || "Hmm..."),
-        uniquenessTips: data.type === 'general' ? "" : (data.data?.differentiators?.join('\n• ') || ""),
-        basicStructure: data.type === 'general' ? "" : (data.data?.roadmap?.join('\n') || ""),
+        exists: data.isIdea ? (data.marketReality || "Hmm...") : (data.generalResponse || "Hey!"),
+        uniquenessTips: data.isIdea ? (data.uniquenessTips?.map((t: string) => "• " + t).join('\n') || "") : "",
+        basicStructure: data.isIdea ? (data.roadmap?.map((t: string, i: number) => `${i+1}. ${t}`).join('\n') || "") : "",
         timestamp: serverTimestamp(),
         starred: false
       };
@@ -209,17 +209,17 @@ export default function ServerWorkspace() {
       let tipsText = "No tips generated.";
       let structureText = "No structure generated.";
 
-      if (data.type === 'general') {
-          existsText = data.content || "No response";
+      if (!data.isIdea) {
+          existsText = data.generalResponse || "No response";
           tipsText = "General conversational response. Idea tips not applicable.";
           structureText = "No execution roadmap mapped for general queries.";
-      } else if (data.data) {
-          existsText = data.data.marketReality || "No market data found.";
-          if (data.data.differentiators && Array.isArray(data.data.differentiators)) {
-              tipsText = data.data.differentiators.map((t: string) => "• " + t).join('\n');
+      } else {
+          existsText = data.marketReality || "No market data found.";
+          if (data.uniquenessTips && Array.isArray(data.uniquenessTips)) {
+              tipsText = data.uniquenessTips.map((t: string) => "• " + t).join('\n');
           }
-          if (data.data.roadmap && Array.isArray(data.data.roadmap)) {
-              structureText = data.data.roadmap.map((s: string, i: number) => (i+1) + ". " + s).join('\n');
+          if (data.roadmap && Array.isArray(data.roadmap)) {
+              structureText = data.roadmap.map((t: string, i: number) => `${i+1}. ${t}`).join('\n');
           }
       }
 
