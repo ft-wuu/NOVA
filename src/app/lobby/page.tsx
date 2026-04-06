@@ -59,53 +59,66 @@ export default function Lobby() {
     if (!serverName || !displayName) return;
     setIsUploading(true);
     
-    let generatedCode = "MYSERVER-123";
-    if (maxMembers > 0) {
-      generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    }
-    
-    let iconUrl = "";
-    if (serverIconFile) {
-        try {
-           const storageRef = ref(storage, `server_icons/${generatedCode}_${serverIconFile.name}`);
-           const uploadTask = await uploadBytesResumable(storageRef, serverIconFile);
-           iconUrl = await getDownloadURL(uploadTask.ref);
-        } catch(e) {
-           console.error("Image upload failed", e);
+    try {
+        let generatedCode = "MYSERVER-123";
+        if (maxMembers > 0) {
+          generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase();
         }
+        
+        let iconUrl = "";
+        if (serverIconFile) {
+            try {
+               const storageRef = ref(storage, `server_icons/${generatedCode}_${serverIconFile.name}`);
+               const uploadTask = await uploadBytesResumable(storageRef, serverIconFile);
+               iconUrl = await getDownloadURL(uploadTask.ref);
+            } catch(e) {
+               console.error("Image upload failed", e);
+            }
+        }
+
+        // Create the master server document
+        await setDoc(doc(db, "servers", generatedCode), {
+            name: serverName,
+            iconUrl: iconUrl,
+            createdBy: displayName,
+            createdAt: serverTimestamp()
+        });
+
+        saveLocalServer({ id: generatedCode, name: serverName, iconUrl });
+        setInviteCode(generatedCode);
+        await registerMember(generatedCode, displayName);
+    } catch(err: any) {
+        console.error("Error creating server:", err);
+        alert("Failed to create server. Check console for details.");
+    } finally {
+        setIsUploading(false);
     }
-
-    // Create the master server document
-    await setDoc(doc(db, "servers", generatedCode), {
-        name: serverName,
-        iconUrl: iconUrl,
-        createdBy: displayName,
-        createdAt: serverTimestamp()
-    });
-
-    saveLocalServer({ id: generatedCode, name: serverName, iconUrl });
-    setInviteCode(generatedCode);
-    await registerMember(generatedCode, displayName);
-    setIsUploading(false);
   };
 
   const handleJoinServer = async () => {
     if (!displayName || !joinCode) return;
     setIsUploading(true);
-    const sId = joinCode.toUpperCase();
     
-    // Fetch master doc to get name/icon for UI
-    const sDoc = await getDoc(doc(db, "servers", sId));
-    if (sDoc.exists()) {
-        const data = sDoc.data();
-        saveLocalServer({ id: sId, name: data.name || sId, iconUrl: data.iconUrl || "" });
-    } else {
-        saveLocalServer({ id: sId, name: sId, iconUrl: "" });
-    }
+    try {
+        const sId = joinCode.toUpperCase();
+        
+        // Fetch master doc to get name/icon for UI
+        const sDoc = await getDoc(doc(db, "servers", sId));
+        if (sDoc.exists()) {
+            const data = sDoc.data();
+            saveLocalServer({ id: sId, name: data.name || sId, iconUrl: data.iconUrl || "" });
+        } else {
+            saveLocalServer({ id: sId, name: sId, iconUrl: "" });
+        }
 
-    await registerMember(sId, displayName);
-    setIsUploading(false);
-    router.push(`/server/${sId}`);
+        await registerMember(sId, displayName);
+        router.push(`/server/${sId}`);
+    } catch(err: any) {
+        console.error("Error joining server:", err);
+        alert("Failed to join server. Check console for details.");
+    } finally {
+        setIsUploading(false);
+    }
   };
 
   const navigateToServer = () => {
