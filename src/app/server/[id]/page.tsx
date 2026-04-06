@@ -153,21 +153,40 @@ export default function ServerWorkspace() {
     setIsBotTyping(true);
     
     try {
-      const response = await fetch('/api/analyze', {
+      const response = await fetch('/api/nova/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({ messages: [{ role: 'user', content: prompt }] })
       });
       
       const data = await response.json();
       
+      let existsText = "Information not found.";
+      let tipsText = "No tips generated.";
+      let structureText = "No structure generated.";
+
+      // Handle general chat vs structured idea analysis
+      if (data.type === 'general') {
+          existsText = data.content || "No response";
+          tipsText = "General conversational response. Idea tips not applicable.";
+          structureText = "No execution roadmap mapped for general queries.";
+      } else if (data.data) {
+          existsText = data.data.marketReality || "No market data found.";
+          if (data.data.differentiators && Array.isArray(data.data.differentiators)) {
+              tipsText = data.data.differentiators.map((t: string) => "• " + t).join('\n');
+          }
+          if (data.data.roadmap && Array.isArray(data.data.roadmap)) {
+              structureText = data.data.roadmap.map((s: string, i: number) => (i+1) + ". " + s).join('\n');
+          }
+      }
+
       const botReport = {
         sender: "NOVA Bot",
         type: "bot_report",
         ideaPrompt: prompt,
-        exists: data.exists || "Information not found.",
-        uniquenessTips: data.uniquenessTips || "No tips generated.",
-        basicStructure: data.basicStructure || "No structure generated.",
+        exists: existsText,
+        uniquenessTips: tipsText,
+        basicStructure: structureText,
         timestamp: serverTimestamp(),
         starred: false
       };
@@ -180,8 +199,8 @@ export default function ServerWorkspace() {
         type: "bot_report",
         ideaPrompt: prompt,
         exists: "Network or Server Error.",
-        uniquenessTips: "Could not connect to the API or the API key is unauthorized.",
-        basicStructure: "Please verify your Gemini API key in the Vercel dashboard and ensure your prompt was clear.",
+        uniquenessTips: "Could not connect to the Claude API or the API key is unauthorized.",
+        basicStructure: "Please verify your ANTHROPIC_API_KEY in the Vercel dashboard and ensure your prompt was clear.",
         timestamp: serverTimestamp(),
         starred: false
       };
