@@ -238,15 +238,15 @@ export default function ServerWorkspace() {
 
   const handleLeaveServer = async () => {
     if (confirm("Are you sure you want to completely leave this server and remove yourself from its member list?")) {
-        try {
-           await deleteDoc(doc(db, `servers/${id}/members/${currentUser}`));
-           const saved = savedServers.filter((s:any) => s.id !== id);
-           localStorage.setItem("nova_servers", JSON.stringify(saved));
-           router.push('/lobby');
-        } catch(e) {
-           console.error(e);
-           router.push('/lobby');
-        }
+        // Optimistically remove from local storage so UI updates instantly
+        const saved = savedServers.filter((s:any) => s.id !== id);
+        localStorage.setItem("nova_servers", JSON.stringify(saved));
+        setSavedServers(saved); // Update current state just in case
+        
+        // Fire and forget delete from Firebase (don't let permission errors block the UI removal)
+        deleteDoc(doc(db, `servers/${id}/members/${currentUser}`)).catch(e => console.warn("Firebase member delete ignored: ", e));
+        
+        router.push('/lobby');
     }
   };
 
