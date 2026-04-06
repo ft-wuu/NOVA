@@ -72,6 +72,11 @@ export default function ServerWorkspace() {
       }
       prevMembersRef.current = liveMembers;
       setMembers(liveMembers);
+    }, (error: any) => {
+       console.error("Snapshot error:", error);
+       if (error.code === 'permission-denied') {
+          alert("CRITICAL FIREBASE ERROR: Your members list is broken because your Firebase Security Rules are locked. Go to Firebase > Firestore > Rules and change it to 'allow read, write: if true;' to fix this.");
+       }
     });
 
     let q;

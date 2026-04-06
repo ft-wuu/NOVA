@@ -50,8 +50,11 @@ export default function Lobby() {
         online: true,
         joinedAt: serverTimestamp()
       });
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to register member", e);
+      if (e.code === 'permission-denied' || (e.message && e.message.includes("permission"))) {
+          alert(`CRITICAL FIREBASE ERROR: Your Firestore database is locked! Go to Firebase > Firestore > Rules and set: allow read, write: if true;`);
+      }
     }
   };
 
