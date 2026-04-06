@@ -23,6 +23,8 @@ export default function ServerWorkspace() {
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  const [recentJoinedMsg, setRecentJoinedMsg] = useState<string | null>(null);
+  const prevMembersRef = useRef<any[]>([]);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -57,7 +59,18 @@ export default function ServerWorkspace() {
 
     // Fetch live members
     const membersUnsub = onSnapshot(collection(db, `servers/${id}/members`), (snapshot) => {
-      const liveMembers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const liveMembers = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+      
+      // Detect newly joined members for the notification
+      const prev = prevMembersRef.current;
+      if (prev.length > 0 && liveMembers.length > prev.length) {
+         const newMember = liveMembers.find(m => !prev.find(p => p.id === m.id));
+         if (newMember && newMember.name !== storedUser) {
+             setRecentJoinedMsg(`🚀 ${newMember.name} just joined the workspace!`);
+             setTimeout(() => setRecentJoinedMsg(null), 5000); // Hide after 5 seconds
+         }
+      }
+      prevMembersRef.current = liveMembers;
       setMembers(liveMembers);
     });
 
@@ -291,8 +304,15 @@ export default function ServerWorkspace() {
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "var(--background)" }}>
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "var(--background)", position: "relative" }}>
       
+      {/* Toast Notification */}
+      {recentJoinedMsg && (
+         <div style={{ position: "absolute", top: "20px", right: "20px", background: "var(--primary)", color: "white", padding: "12px 20px", borderRadius: "8px", boxShadow: "0 4px 15px rgba(157, 78, 221, 0.4)", zIndex: 9999, animation: "fadeInUp 0.3s ease-out forwards", fontWeight: "bold", border: "1px solid var(--primary-light)" }}>
+             {recentJoinedMsg}
+         </div>
+      )}
+
       {/* 1. FAR LEFT: Discord-Style Server Sidebar */}
       <div style={{ width: "72px", backgroundColor: "#020008", borderRight: "1px solid var(--glass-border)", display: "flex", flexDirection: "column", alignItems: "center", padding: "15px 0", gap: "15px", zIndex: 100, flexShrink: 0 }}>
          {/* Direct Message (NOVA AI Mascot) */}
