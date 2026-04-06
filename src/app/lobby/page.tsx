@@ -76,21 +76,21 @@ export default function Lobby() {
             }
         }
 
-        // Create the master server document (run in background, do not await it so it never freezes UI)
+        // Run background writes without awaiting them
         setDoc(doc(db, "servers", generatedCode), {
-            name: serverName,
-            iconUrl: iconUrl,
-            createdBy: displayName,
-            createdAt: serverTimestamp()
+            name: serverName, iconUrl, createdBy: displayName, createdAt: serverTimestamp()
         }).catch(err => console.warn("Firebase root write ignored: ", err));
 
         saveLocalServer({ id: generatedCode, name: serverName, iconUrl });
-        setInviteCode(generatedCode);
-        await registerMember(generatedCode, displayName);
+        
+        setIsUploading(false); // Explicitly unlock the UI IMMEDIATELY
+        setInviteCode(generatedCode); // Instantly show the generated code block
+        
+        // Fire and forget registering
+        registerMember(generatedCode, displayName).catch(e => console.warn("Register ignored: ", e));
     } catch(err: any) {
         console.error("Error creating server:", err);
         alert("Failed to create server. Check console for details.");
-    } finally {
         setIsUploading(false);
     }
   };
@@ -101,29 +101,33 @@ export default function Lobby() {
     
     try {
         const sId = joinCode.toUpperCase();
-        
         let fetchedName = sId;
         let fetchedIcon = "";
 
-        // Fetch master doc to get name/icon for UI softly
+        // Use Promise.race to guarantee UI doesn't hang if database is unresponsive
         try {
-            const sDoc = await getDoc(doc(db, "servers", sId));
-            if (sDoc.exists()) {
+            const fetchDocPromise = getDoc(doc(db, "servers", sId));
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
+            const sDoc: any = await Promise.race([fetchDocPromise, timeoutPromise]);
+            
+            if (sDoc && sDoc.exists && sDoc.exists()) {
                 const data = sDoc.data();
                 fetchedName = data.name || sId;
                 fetchedIcon = data.iconUrl || "";
             }
         } catch (e) {
-             console.warn("Firebase root read ignored: ", e);
+             console.warn("Firebase root read timeout/ignored: ", e);
         }
 
         saveLocalServer({ id: sId, name: fetchedName, iconUrl: fetchedIcon });
-        await registerMember(sId, displayName);
+        
+        setIsUploading(false); // Explicitly unlock UI
+        
+        registerMember(sId, displayName).catch(e => console.warn("Register ignored: ", e));
         router.push(`/server/${sId}`);
     } catch(err: any) {
         console.error("Error joining server:", err);
         alert("Failed to join server. Check console for details.");
-    } finally {
         setIsUploading(false);
     }
   };
