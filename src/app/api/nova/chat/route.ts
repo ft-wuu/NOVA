@@ -4,51 +4,34 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
 
 const SYSTEM_PROMPT = `You are NOVA, an AI startup analyst. 
-Return ONLY a JSON object. If the user asks a general question, output 
-{ "isIdea": false, "response": "your reply" }. 
-If the user proposes an idea, output 
-{ "isIdea": true, "marketReality": "...", "uniquenessTips": ["...","...","..."], "roadmap": ["...","...","..."] }.`;
+If the user asks a general question, output this JSON:
+{ "isIdea": false, "response": "your reply" }
+
+If the user proposes an idea, output this JSON:
+{ "isIdea": true, "marketReality": "brief reality", "uniquenessTips": ["tip1", "tip2", "tip3"], "roadmap": ["step1", "step2", "step3"] }
+
+STRICT RULE: Return ONLY the JSON object. Do not include markdown blocks, backticks, or any other text.`;
 
 export async function POST(req: Request) {
   try {
+    if (!GEMINI_API_KEY) {
+      return NextResponse.json({ error: 'GEMINI_API_KEY is not configured in Vercel environment variables.' }, { status: 500 });
+    }
+
     const { messages } = await req.json();
     const lastMessage = messages?.[messages.length - 1]?.content || '';
 
+    // Old-school payload format (v1 compatible)
     const body = {
-      systemInstruction: {
-        role: "system",
-        parts: [{ text: SYSTEM_PROMPT }]
-      },
       contents: [
         {
-          role: "user",
-          parts: [{ text: lastMessage }]
+          parts: [{ text: `${SYSTEM_PROMPT}\n\nUSER MESSAGE: ${lastMessage}` }]
         }
       ],
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 1024,
-        responseMimeType: "application/json",
-        stopSequences: ["\n"]
-      },
-      safetySettings: [
-        {
-          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-          threshold: "BLOCK_NONE"
-        },
-        {
-          category: "HARM_CATEGORY_HARASSMENT",
-          threshold: "BLOCK_NONE"
-        },
-        {
-          category: "HARM_CATEGORY_HATE_SPEECH",
-          threshold: "BLOCK_NONE"
-        },
-        {
-          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-          threshold: "BLOCK_NONE"
-        }
-      ]
+        maxOutputTokens: 1024
+      }
     };
 
     const res = await fetch(GEMINI_URL, {
@@ -59,8 +42,7 @@ export async function POST(req: Request) {
 
     if (!res.ok) {
       const errText = await res.text();
-      console.error("Gemini REST Error:", errText);
-      return NextResponse.json({ error: `Gemini API Error ${res.status}: ${errText}` }, { status: res.status });
+      return NextResponse.json({ error: `Gemini Error ${res.status}: ${errText}` }, { status: res.status });
     }
 
     const data = await res.json();
@@ -68,8 +50,14 @@ export async function POST(req: Request) {
 
     let parsed: any = {};
     try {
-      const match = rawText.match(/\{[\s\S]*\}/);
-      parsed = JSON.parse(match ? match[0] : rawText);
+      // Find the first { and last } to extract JSON even if model adds talk
+      const firstBrace = rawText.indexOf('{');
+      const lastBrace = rawText.lastIndexOf('}');
+      const jsonStr = (firstBrace !== -1 && lastBrace !== -1) 
+        ? rawText.substring(firstBrace, lastBrace + 1) 
+        : rawText;
+      
+      parsed = JSON.parse(jsonStr);
     } catch {
       parsed = { isIdea: false, response: rawText || "I couldn't process that. Try again!" };
     }
@@ -78,7 +66,6 @@ export async function POST(req: Request) {
     return NextResponse.json(parsed);
 
   } catch (error: any) {
-    console.error("NOVA API Error:", error);
     return NextResponse.json({ error: error.message || 'API crashed.' }, { status: 500 });
   }
 }
