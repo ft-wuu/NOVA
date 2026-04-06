@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../../lib/firebase";
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { db, storage } from "../../lib/firebase";
 
 export default function Lobby() {
   const router = useRouter();
@@ -13,25 +13,37 @@ export default function Lobby() {
   const [serverName, setServerName] = useState("");
   const [maxMembers, setMaxMembers] = useState(1);
   const [inviteCode, setInviteCode] = useState("");
+  const [serverIconFile, setServerIconFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Join Server State
   const [displayName, setDisplayName] = useState("");
   const [joinCode, setJoinCode] = useState("");
 
-  // Auto-redirect if already joined
   useEffect(() => {
-    const lastServer = localStorage.getItem("nova_last_server");
-    const user = localStorage.getItem("nova_user");
-    if (lastServer && user) {
-      router.push(`/server/${lastServer}`);
-    }
+    // We intentionally disable auto-redirect here so users can use the lobby to click on 'Create Server'
+    // after leaving another server, or if they just want to see the menu.
+    // We rely on the Left Sidebar in the child pages to navigate quickly.
   }, [router]);
+
+  const saveLocalServer = (serverData: any) => {
+    let saved = [];
+    try {
+        const existing = localStorage.getItem("nova_servers");
+        if (existing) saved = JSON.parse(existing);
+    } catch(e) {}
+    
+    // Prevent duplicates
+    if (!saved.find((s: any) => s.id === serverData.id)) {
+        saved.push(serverData);
+        localStorage.setItem("nova_servers", JSON.stringify(saved));
+    }
+  };
 
   const registerMember = async (serverId: string, username: string) => {
     localStorage.setItem("nova_user", username);
     localStorage.setItem("nova_last_server", serverId);
     
-    // Register user in the server's members collection
     try {
       await setDoc(doc(db, `servers/${serverId}/members`, username), {
         name: username,
@@ -45,20 +57,54 @@ export default function Lobby() {
 
   const handleCreateServer = async () => {
     if (!serverName || !displayName) return;
+    setIsUploading(true);
     
     let generatedCode = "MYSERVER-123";
-    if (maxMembers > 1) {
+    if (maxMembers > 0) {
       generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     }
     
+    let iconUrl = "";
+    if (serverIconFile) {
+        try {
+           const storageRef = ref(storage, `server_icons/${generatedCode}_${serverIconFile.name}`);
+           const uploadTask = await uploadBytesResumable(storageRef, serverIconFile);
+           iconUrl = await getDownloadURL(uploadTask.ref);
+        } catch(e) {
+           console.error("Image upload failed", e);
+        }
+    }
+
+    // Create the master server document
+    await setDoc(doc(db, "servers", generatedCode), {
+        name: serverName,
+        iconUrl: iconUrl,
+        createdBy: displayName,
+        createdAt: serverTimestamp()
+    });
+
+    saveLocalServer({ id: generatedCode, name: serverName, iconUrl });
     setInviteCode(generatedCode);
     await registerMember(generatedCode, displayName);
+    setIsUploading(false);
   };
 
   const handleJoinServer = async () => {
     if (!displayName || !joinCode) return;
+    setIsUploading(true);
     const sId = joinCode.toUpperCase();
+    
+    // Fetch master doc to get name/icon for UI
+    const sDoc = await getDoc(doc(db, "servers", sId));
+    if (sDoc.exists()) {
+        const data = sDoc.data();
+        saveLocalServer({ id: sId, name: data.name || sId, iconUrl: data.iconUrl || "" });
+    } else {
+        saveLocalServer({ id: sId, name: sId, iconUrl: "" });
+    }
+
     await registerMember(sId, displayName);
+    setIsUploading(false);
     router.push(`/server/${sId}`);
   };
 
@@ -69,6 +115,8 @@ export default function Lobby() {
   const handleLogout = () => {
      localStorage.removeItem("nova_user");
      localStorage.removeItem("nova_last_server");
+     localStorage.removeItem("nova_servers");
+     alert("Session and Saved Servers cleared!");
   };
 
   return (
@@ -81,7 +129,7 @@ export default function Lobby() {
       <div style={{ display: "flex", gap: "40px", flexWrap: "wrap", justifyContent: "center", width: "100%", maxWidth: "1000px", marginTop: "80px" }}>
         
         {/* Create Server */}
-        <div className="glass-panel" style={{ flex: "1 1 400px", display: "flex", flexDirection: "column", gap: "20px", animation: "fadeInUp 0.5s ease-out forwards" }}>
+        <div className="glass-panel" style={{ flex: "1 1 400px", display: "flex", flexDirection: "column", gap: "15px", animation: "fadeInUp 0.5s ease-out forwards" }}>
           <h2 style={{ color: "var(--primary-light)" }}>Create a Workspace</h2>
           <p style={{ color: "#aaa", fontSize: "0.9rem" }}>Start a new AI-powered brain-trust.</p>
 
@@ -92,6 +140,7 @@ export default function Lobby() {
                placeholder="How should your team see you?" 
                value={displayName}
                onChange={(e) => setDisplayName(e.target.value)}
+               disabled={isUploading}
             />
           </div>
 
@@ -102,27 +151,31 @@ export default function Lobby() {
                placeholder="e.g. Next Big Tech" 
                value={serverName}
                onChange={(e) => setServerName(e.target.value)}
+               disabled={isUploading}
             />
           </div>
-
+          
           <div>
-            <label style={{ display: "block", marginBottom: "8px", color: "#ccc", fontSize: "0.9rem" }}>Max Members (1 - 4)</label>
+            <label style={{ display: "block", marginBottom: "8px", color: "#ccc", fontSize: "0.9rem" }}>Server Icon (Optional)</label>
             <input 
-               type="number" 
-               min="1" max="4" 
-               value={maxMembers}
-               onChange={(e) => setMaxMembers(parseInt(e.target.value))}
+               type="file" 
+               accept="image/*"
+               onChange={(e) => setServerIconFile(e.target.files ? e.target.files[0] : null)}
+               style={{ border: "1px dashed #555", padding: "10px", width: "100%", color: "#ccc", borderRadius: "6px" }}
+               disabled={isUploading}
             />
           </div>
 
           {inviteCode ? (
-             <div style={{ background: "rgba(157, 78, 221, 0.1)", border: "1px solid var(--primary)", padding: "15px", borderRadius: "8px" }}>
+             <div style={{ background: "rgba(157, 78, 221, 0.1)", border: "1px solid var(--primary)", padding: "15px", borderRadius: "8px", marginTop: "10px" }}>
                <p style={{ color: "var(--primary-light)", fontSize: "0.9rem", marginBottom: "5px" }}>Invite Code Generated!</p>
                <h3 style={{ letterSpacing: "3px" }}>{inviteCode}</h3>
                <button onClick={navigateToServer} className="nova-button" style={{ width: "100%", marginTop: "15px" }}>Enter Workspace</button>
              </div>
           ) : (
-            <button onClick={handleCreateServer} className="nova-button" style={{ width: "100%" }} disabled={!displayName || !serverName}>Create Server</button>
+            <button onClick={handleCreateServer} className="nova-button" style={{ width: "100%", marginTop: "10px" }} disabled={!displayName || !serverName || isUploading}>
+                {isUploading ? "Creating..." : "Create Server"}
+            </button>
           )}
         </div>
 
@@ -138,6 +191,7 @@ export default function Lobby() {
                placeholder="How should we call you?" 
                value={displayName} // Sharing display name state for simplicity, normally separate but works here.
                onChange={(e) => setDisplayName(e.target.value)}
+               disabled={isUploading}
             />
           </div>
 
@@ -148,10 +202,13 @@ export default function Lobby() {
                placeholder="e.g. X7B9K2" 
                value={joinCode}
                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+               disabled={isUploading}
             />
           </div>
 
-          <button onClick={handleJoinServer} className="nova-button secondary" style={{ width: "100%", marginTop: "auto" }} disabled={!displayName || !joinCode}>Join Server</button>
+          <button onClick={handleJoinServer} className="nova-button secondary" style={{ width: "100%", marginTop: "auto" }} disabled={!displayName || !joinCode || isUploading}>
+              {isUploading ? "Joining..." : "Join Server"}
+          </button>
         </div>
 
       </div>
