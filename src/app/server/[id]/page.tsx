@@ -144,11 +144,18 @@ export default function ServerWorkspace() {
       // Failsafe: Add anyone who has ever spoken in the server to the offline members list!
       const uniqueSenders = Array.from(new Set(msgs.map((m: any) => m.sender)));
       const inferredMembers = uniqueSenders
-            .filter(name => name !== "NOVA Mascot" && name !== "NOVA Bot" && name !== storedUser)
+            .filter(name => name !== "NOVA Mascot" && name !== "NOVA Bot" && name !== "SYSTEM" && name !== storedUser)
             .map(name => ({ id: name, name, online: false }));
       
-      if (inferredMembers.length > 0) {
-          syncLocalMembers(inferredMembers);
+      // Real-time peer discovery! Extract new users from system_join messages
+      const systemJoins = msgs
+            .filter((m: any) => m.type === "system_join" && m.targetUser && m.targetUser !== storedUser)
+            .map((m: any) => ({ id: m.targetUser, name: m.targetUser, online: true }));
+            
+      const combined = [...inferredMembers, ...systemJoins];
+      
+      if (combined.length > 0) {
+          syncLocalMembers(combined);
       }
     });
 
@@ -527,6 +534,12 @@ export default function ServerWorkspace() {
                        <div style={{ color: "#eee", fontSize: "0.95rem", lineHeight: "1.5" }}>
                          {msg.content}
                          {msg.fileUrl && renderFile(msg.fileUrl, msg.fileType)}
+                       </div>
+                    )}
+
+                    {msg.type === "system_join" && (
+                       <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--primary-light)", fontSize: "0.95rem", fontStyle: "italic", background: "rgba(157, 78, 221, 0.1)", padding: "8px 12px", borderRadius: "8px", borderLeft: "3px solid var(--primary)", marginTop: "5px" }}>
+                         🚀 {msg.targetUser} officially joined the workspace!
                        </div>
                     )}
 

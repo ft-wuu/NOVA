@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, getDoc, serverTimestamp, addDoc, collection } from "firebase/firestore";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../../lib/firebase";
 
@@ -44,6 +44,7 @@ export default function Lobby() {
     localStorage.setItem("nova_user", username);
     localStorage.setItem("nova_last_server", serverId);
     
+    // Normal registration
     try {
       await setDoc(doc(db, `servers/${serverId}/members`, username), {
         name: username,
@@ -51,10 +52,19 @@ export default function Lobby() {
         joinedAt: serverTimestamp()
       });
     } catch (e: any) {
-      console.error("Failed to register member", e);
-      if (e.code === 'permission-denied' || (e.message && e.message.includes("permission"))) {
-          alert(`CRITICAL FIREBASE ERROR: Your Firestore database is locked! Go to Firebase > Firestore > Rules and set: allow read, write: if true;`);
-      }
+      console.warn("Direct member write failed:", e);
+    }
+
+    // Failsafe: Write a system message to the chat channel so other users detect the join natively!
+    try {
+       await addDoc(collection(db, `servers/${serverId}/channels/general-chat/messages`), {
+           sender: "SYSTEM",
+           type: "system_join",
+           targetUser: username,
+           timestamp: serverTimestamp()
+       });
+    } catch (err) {
+       console.warn("Failsafe system join broadcast failed:", err);
     }
   };
 
