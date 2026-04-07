@@ -159,98 +159,125 @@ export default function Lobby() {
   };
 
   return (
-    <main style={{ minHeight: "100vh", background: "var(--background)", display: "flex", justifyContent: "center", alignItems: "center", padding: "20px", transition: "background 0.5s ease" }}>
-      <header className="header">
-        <div className="logo" style={{ color: "var(--foreground)" }}>NOVA <span>.AI</span></div>
-        <button onClick={handleLogout} className="nova-button secondary">Clear Session</button>
+    <main style={{ minHeight: "100vh", background: "var(--background)", display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", padding: "40px 20px", transition: "background 0.5s ease", position: "relative" }}>
+      {/* Background Accents */}
+      <div style={{ position: "fixed", top: "0", right: "0", width: "400px", height: "400px", background: "radial-gradient(circle, rgba(157, 78, 221, 0.05) 0%, transparent 70%)", filter: "blur(60px)", zIndex: 0 }} />
+      
+      <header style={{ 
+        height: "70px", 
+        display: "flex", 
+        alignItems: "center", 
+        justifyContent: "space-between", 
+        padding: "0 5%", 
+        position: "fixed", 
+        top: 0, 
+        left: 0, 
+        right: 0, 
+        background: "rgba(2, 2, 5, 0.5)", 
+        backdropFilter: "blur(15px)",
+        borderBottom: "1px solid var(--glass-border)",
+        zIndex: 1000 
+      }}>
+        <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>NOVA <span style={{ color: 'var(--primary-light)' }}>.AI</span></div>
+        <button onClick={handleLogout} className="nova-button secondary" style={{ padding: "8px 20px" }}>Secure Sign Out</button>
       </header>
 
-      <div style={{ display: "flex", gap: "40px", flexWrap: "wrap", justifyContent: "center", width: "100%", maxWidth: "1000px", marginTop: "80px" }}>
+      <div style={{ display: "flex", gap: "30px", flexWrap: "wrap", justifyContent: "center", width: "100%", maxWidth: "1100px", marginTop: "60px", position: "relative", zIndex: 1 }}>
         
         {/* Create Server */}
-        <div className="glass-panel" style={{ flex: "1 1 400px", display: "flex", flexDirection: "column", gap: "15px", animation: "fadeInUp 0.5s ease-out forwards", background: "var(--card)", border: "1px solid var(--glass-border)" }}>
-          <h2 style={{ color: "var(--primary-light)" }}>Create a Workspace</h2>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>Start a new AI-powered brain-trust.</p>
-
-          <div>
-            <label style={{ display: "block", marginBottom: "8px", color: "var(--text-muted)", fontSize: "0.9rem" }}>Your Display Name</label>
-            <input 
-               type="text" 
-               placeholder="How should your team see you?" 
-               value={displayName}
-               onChange={(e) => setDisplayName(e.target.value)}
-               disabled={isUploading}
-               style={{ background: "var(--input-bg)", color: "var(--foreground)", border: "1px solid var(--glass-border)" }}
-            />
+        <div className="glass-panel" style={{ flex: "1 1 450px", display: "flex", flexDirection: "column", gap: "20px", animation: "fadeInUp 0.6s ease-out forwards" }}>
+          <div style={{ paddingBottom: "10px", borderBottom: "1px solid var(--glass-border)" }}>
+             <h2 style={{ color: "white", fontWeight: "800", fontSize: "1.5rem" }}>Establish Workspace</h2>
+             <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginTop: "4px" }}>Start a high-intelligence collaborative unit.</p>
           </div>
 
-          <div>
-            <label style={{ display: "block", marginBottom: "8px", color: "var(--text-muted)", fontSize: "0.9rem" }}>Server Name</label>
-            <input 
-               type="text" 
-               placeholder="e.g. Next Big Tech" 
-               value={serverName}
-               onChange={(e) => setServerName(e.target.value)}
-               disabled={isUploading}
-               style={{ background: "var(--input-bg)", color: "var(--foreground)", border: "1px solid var(--glass-border)" }}
-            />
-          </div>
-          
-          <div>
-            <label style={{ display: "block", marginBottom: "8px", color: "var(--text-muted)", fontSize: "0.9rem" }}>Server Icon (Optional)</label>
-            <input 
-               type="file" 
-               accept="image/*"
-               onChange={(e) => setServerIconFile(e.target.files ? e.target.files[0] : null)}
-               style={{ border: "1px dashed var(--glass-border)", padding: "10px", width: "100%", color: "var(--text-muted)", borderRadius: "6px", background: "var(--input-bg)" }}
-               disabled={isUploading}
-            />
+          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+            <div>
+              <label style={{ display: "block", marginBottom: "8px", color: "var(--text-muted)", fontSize: "0.8rem", fontWeight: "bold", textTransform: "uppercase" }}>Commander Identity</label>
+              <input 
+                 type="text" 
+                 placeholder="Enter your callsign..." 
+                 value={displayName}
+                 onChange={(e) => setDisplayName(e.target.value)}
+                 disabled={isUploading}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", marginBottom: "8px", color: "var(--text-muted)", fontSize: "0.8rem", fontWeight: "bold", textTransform: "uppercase" }}>Workspace Name</label>
+              <input 
+                 type="text" 
+                 placeholder="e.g. Project 'Nova Core'" 
+                 value={serverName}
+                 onChange={(e) => setServerName(e.target.value)}
+                 disabled={isUploading}
+              />
+            </div>
+            
+            <div>
+              <label style={{ display: "block", marginBottom: "8px", color: "var(--text-muted)", fontSize: "0.8rem", fontWeight: "bold", textTransform: "uppercase" }}>Protocol Icon</label>
+              <div style={{ position: "relative" }}>
+                 <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={(e) => setServerIconFile(e.target.files ? e.target.files[0] : null)}
+                    style={{ opacity: 0, position: "absolute", inset: 0, cursor: "pointer" }}
+                    disabled={isUploading}
+                 />
+                 <div style={{ border: "1px dashed var(--glass-border)", padding: "12px", borderRadius: "10px", background: "var(--input-bg)", color: "var(--text-muted)", fontSize: "0.85rem", textAlign: "center" }}>
+                    {serverIconFile ? serverIconFile.name : "Upload Neural Icon (Optional)"}
+                 </div>
+              </div>
+            </div>
           </div>
 
           {inviteCode ? (
-             <div style={{ background: "rgba(157, 78, 221, 0.1)", border: "1px solid var(--primary)", padding: "15px", borderRadius: "8px", marginTop: "10px" }}>
-               <p style={{ color: "var(--primary-light)", fontSize: "0.9rem", marginBottom: "5px" }}>Invite Code Generated!</p>
-               <h3 style={{ letterSpacing: "3px", color: "var(--foreground)" }}>{inviteCode}</h3>
-               <button onClick={navigateToServer} className="nova-button" style={{ width: "100%", marginTop: "15px" }}>Enter Workspace</button>
+             <div style={{ background: "rgba(157, 78, 221, 0.08)", border: "1px solid var(--primary-light)", padding: "20px", borderRadius: "14px", marginTop: "10px", textAlign: "center", animation: "fadeInScale 0.4s ease-out" }}>
+               <p style={{ color: "var(--primary-light)", fontSize: "0.8rem", fontWeight: "bold", marginBottom: "10px", textTransform: "uppercase" }}>Access Key Generated</p>
+               <h2 style={{ letterSpacing: "5px", color: "white", fontSize: "2rem", fontWeight: "900" }}>{inviteCode}</h2>
+               <button onClick={navigateToServer} className="nova-button" style={{ width: "100%", marginTop: "20px" }}>Enter Authorization Zone</button>
              </div>
           ) : (
-            <button onClick={handleCreateServer} className="nova-button" style={{ width: "100%", marginTop: "10px" }} disabled={!displayName || !serverName || isUploading}>
-                {isUploading ? "Creating..." : "Create Server"}
+            <button onClick={handleCreateServer} className="nova-button" style={{ width: "100%", marginTop: "10px", padding: "16px" }} disabled={!displayName || !serverName || isUploading}>
+                {isUploading ? "Initializing..." : "Broadcast Workspace"}
             </button>
           )}
         </div>
 
         {/* Join Server */}
-        <div className="glass-panel" style={{ flex: "1 1 400px", display: "flex", flexDirection: "column", gap: "20px", animation: "fadeInUp 0.5s ease-out forwards", background: "var(--card)", border: "1px solid var(--glass-border)" }}>
-          <h2 style={{ color: "var(--accent)" }}>Join a Workspace</h2>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>Got an invite code? Enter it below.</p>
-
-          <div>
-            <label style={{ display: "block", marginBottom: "8px", color: "var(--text-muted)", fontSize: "0.9rem" }}>Display Name</label>
-            <input 
-               type="text" 
-               placeholder="How should we call you?" 
-               value={displayName}
-               onChange={(e) => setDisplayName(e.target.value)}
-               disabled={isUploading}
-               style={{ background: "var(--input-bg)", color: "var(--foreground)", border: "1px solid var(--glass-border)" }}
-            />
+        <div className="glass-panel" style={{ flex: "1 1 450px", display: "flex", flexDirection: "column", gap: "20px", animation: "fadeInUp 0.6s 0.2s ease-out forwards", opacity: 0 }}>
+          <div style={{ paddingBottom: "10px", borderBottom: "1px solid var(--glass-border)" }}>
+             <h2 style={{ color: "var(--accent)", fontWeight: "800", fontSize: "1.5rem" }}>Synchronize Units</h2>
+             <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginTop: "4px" }}>Enter an existing authorization key.</p>
           </div>
 
-          <div>
-            <label style={{ display: "block", marginBottom: "8px", color: "var(--text-muted)", fontSize: "0.9rem" }}>Server Invite Code</label>
-            <input 
-               type="text" 
-               placeholder="e.g. X7B9K2" 
-               value={joinCode}
-               onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-               disabled={isUploading}
-               style={{ background: "var(--input-bg)", color: "var(--foreground)", border: "1px solid var(--glass-border)" }}
-            />
+          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+            <div>
+              <label style={{ display: "block", marginBottom: "8px", color: "var(--text-muted)", fontSize: "0.8rem", fontWeight: "bold", textTransform: "uppercase" }}>Member Callsign</label>
+              <input 
+                 type="text" 
+                 placeholder="How will the team see you?" 
+                 value={displayName}
+                 onChange={(e) => setDisplayName(e.target.value)}
+                 disabled={isUploading}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", marginBottom: "8px", color: "var(--text-muted)", fontSize: "0.8rem", fontWeight: "bold", textTransform: "uppercase" }}>Access Key</label>
+              <input 
+                 type="text" 
+                 placeholder="e.g. X1-Y2-Z3" 
+                 value={joinCode}
+                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                 disabled={isUploading}
+                 style={{ letterSpacing: "2px", fontWeight: "bold" }}
+              />
+            </div>
           </div>
 
-          <button onClick={handleJoinServer} className="nova-button secondary" style={{ width: "100%", marginTop: "auto" }} disabled={!displayName || !joinCode || isUploading}>
-              {isUploading ? "Joining..." : "Join Server"}
+          <button onClick={handleJoinServer} className="nova-button secondary" style={{ width: "100%", marginTop: "auto", padding: "16px", borderColor: "var(--accent)", color: "var(--accent)" }} disabled={!displayName || !joinCode || isUploading}>
+              {isUploading ? "Synchronizing..." : "Link to Protocol"}
           </button>
         </div>
 

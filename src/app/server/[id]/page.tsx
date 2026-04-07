@@ -369,47 +369,124 @@ export default function ServerWorkspace() {
     return <a href={url} target="_blank" rel="noreferrer" style={{ color: "var(--primary-light)", textDecoration: "underline" }}>Download Attached File</a>;
   };
 
+  // Draggable Notification FAB Logic
+  const [fabPos, setFabPos] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [hasDragged, setHasDragged] = useState(false);
+  const dragStartPos = useRef({ x: 0, y: 0 });
+  const dragThreshold = 5;
+
+  useEffect(() => {
+    const saved = localStorage.getItem(`nova_fab_pos_${currentUser}`);
+    if (saved) {
+      try { setFabPos(JSON.parse(saved)); } catch(e) {}
+    }
+  }, [currentUser]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setHasDragged(false);
+    dragStartPos.current = { x: e.clientX - fabPos.x, y: e.clientY - fabPos.y };
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      const dx = Math.abs(e.clientX - (dragStartPos.current.x + fabPos.x));
+      const dy = Math.abs(e.clientY - (dragStartPos.current.y + fabPos.y));
+      if (dx > dragThreshold || dy > dragThreshold) {
+        setHasDragged(true);
+      }
+      const newPos = { x: e.clientX - dragStartPos.current.x, y: e.clientY - dragStartPos.current.y };
+      setFabPos(newPos);
+    };
+    const handleMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        localStorage.setItem(`nova_fab_pos_${currentUser}`, JSON.stringify(fabPos));
+      }
+    };
+    if (isDragging) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging, fabPos, currentUser]);
+
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "var(--background)", position: "relative" }}>
       
-      {/* Notifications Panel & Toggle Button (Bottom Right) */}
-      <div style={{ position: "absolute", bottom: "30px", right: "30px", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "15px" }}>
+      {/* Notifications Panel & Toggle Button (Draggable FAB) */}
+      <div style={{ 
+        position: "fixed", 
+        bottom: "30px", 
+        right: "30px", 
+        zIndex: 9999, 
+        display: "flex", 
+        flexDirection: "column", 
+        alignItems: "flex-end", 
+        gap: "15px",
+        transform: `translate(${fabPos.x}px, ${fabPos.y}px)`,
+        transition: isDragging ? "none" : "transform 0.15s cubic-bezier(0.2, 0, 0.2, 1)"
+      }}>
           
-          {/* Incoming Join Toast (Shows conditionally when panel is closed) */}
+          {/* Incoming Join Toast */}
           {recentJoinedMsg && !showNotifications && (
-             <div style={{ background: "var(--primary)", color: "white", padding: "12px 20px", borderRadius: "8px", boxShadow: "0 4px 15px rgba(157, 78, 221, 0.4)", animation: "fadeInUp 0.3s ease-out forwards", fontWeight: "bold", border: "1px solid var(--primary-light)", display: "flex", alignItems: "center", gap: "10px" }}>
+             <div className="glass-panel" style={{ background: "var(--primary)", color: "white", padding: "12px 20px", borderRadius: "12px", boxShadow: "0 8px 32px rgba(157, 78, 221, 0.4)", animation: "fadeInUp 0.3s ease-out forwards", fontWeight: "bold", border: "1px solid var(--primary-light)", display: "flex", alignItems: "center", gap: "10px", pointerEvents: "none" }}>
                  <span style={{ fontSize: "1.2rem" }}>🚀</span> {recentJoinedMsg}
              </div>
           )}
 
           {/* Persistent Notifications Panel */}
           {showNotifications && (
-             <div className="glass-panel" style={{ width: "320px", maxHeight: "400px", background: "rgba(10, 10, 15, 0.95)", border: "1px solid var(--primary-light)", borderRadius: "12px", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 10px 30px rgba(0,0,0,0.8)", animation: "fadeInUp 0.2s", padding: 0 }}>
-                 <div style={{ padding: "15px", borderBottom: "1px solid var(--glass-border)", background: "rgba(157, 78, 221, 0.1)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                     <h4 style={{ margin: 0, color: "white", display: "flex", alignItems: "center", gap: "8px" }}>🔔 Joining Activity</h4>
-                     <button onClick={() => setShowNotifications(false)} style={{ background: "transparent", border: "none", color: "#aaa", cursor: "pointer", fontSize: "1.2rem" }}>&times;</button>
+             <div className="glass-panel" style={{ width: "320px", maxHeight: "420px", background: "rgba(10, 10, 15, 0.98)", border: "1px solid var(--primary-light)", borderRadius: "20px", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 30px 90px rgba(0,0,0,0.9)", animation: "fadeInScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)", padding: 0 }}>
+                 <div style={{ padding: "18px", borderBottom: "1px solid var(--glass-border)", background: "linear-gradient(90deg, rgba(157, 78, 221, 0.2), transparent)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                     <h4 style={{ margin: 0, color: "white", display: "flex", alignItems: "center", gap: "10px", letterSpacing: "1.5px", fontSize: "0.85rem", fontWeight: "900" }}>
+                       <span style={{ color: "var(--primary-light)" }}>●</span> ACTIVITY CORE
+                     </h4>
+                     <button onClick={() => setShowNotifications(false)} style={{ background: "transparent", border: "none", color: "#666", cursor: "pointer", fontSize: "1.5rem", transition: "color 0.2s" }} onMouseEnter={(e) => (e.currentTarget.style.color = "white")} onMouseLeave={(e) => (e.currentTarget.style.color = "#666")}>&times;</button>
                  </div>
-                 <div style={{ flex: 1, overflowY: "auto", padding: "15px", display: "flex", flexDirection: "column", gap: "10px" }} className="hide-scroll">
+                 <div style={{ flex: 1, overflowY: "auto", padding: "15px", display: "flex", flexDirection: "column", gap: "12px" }} className="hide-scroll">
                      {messages.filter(m => m.type === 'system_join').reverse().map((msg: any) => (
-                         <div key={msg.id} style={{ background: "var(--glass)", padding: "12px", borderRadius: "8px", borderLeft: "3px solid var(--primary)", fontSize: "0.85rem", color: "#ddd" }}>
-                             <strong style={{ color: "var(--primary-light)" }}>{msg.targetUser}</strong> joined the server.
-                             <div style={{ fontSize: "0.7rem", color: "#666", marginTop: "4px" }}>
-                                 {msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "Recently"}
+                         <div key={msg.id} style={{ background: "rgba(255,255,255,0.02)", padding: "14px", borderRadius: "12px", borderLeft: "3px solid var(--primary)", fontSize: "0.85rem", color: "#ddd", transition: "all 0.3s ease" }} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")} onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.02)")}>
+                             <strong style={{ color: "var(--primary-light)" }}>{msg.targetUser}</strong> synchronized with server.
+                             <div style={{ fontSize: "0.7rem", color: "#555", marginTop: "8px", fontWeight: "bold", letterSpacing: "0.5px" }}>
+                                 {msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "STARDATE: RECENT"}
                              </div>
                          </div>
                      ))}
                      {messages.filter(m => m.type === 'system_join').length === 0 && (
-                         <div style={{ textAlign: "center", padding: "20px", color: "#666", fontSize: "0.85rem" }}>No one has joined this server yet.</div>
+                         <div style={{ textAlign: "center", padding: "40px 20px", color: "#555", fontSize: "0.85rem", fontStyle: "italic" }}>No synchronization events detected.</div>
                      )}
                  </div>
              </div>
           )}
 
-          {/* Toggle FAB Button */}
+          {/* Draggable FAB Button */}
           <button 
-             onClick={() => setShowNotifications(!showNotifications)}
-             style={{ width: "56px", height: "56px", borderRadius: "50%", background: "var(--primary)", border: "none", color: "white", fontSize: "24px", cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", boxShadow: "0 4px 15px rgba(157, 78, 221, 0.5)", transition: "all 0.2s" }}
-             title="Server Notifications"
+             onMouseDown={handleMouseDown}
+             onClick={() => !isDragging && setShowNotifications(!showNotifications)}
+             style={{ 
+               width: "64px", 
+               height: "64px", 
+               borderRadius: "50%", 
+               background: "var(--primary)", 
+               border: "2px solid var(--primary-light)", 
+               color: "white", 
+               fontSize: "28px", 
+               cursor: isDragging ? "grabbing" : "grab", 
+               display: "flex", 
+               justifyContent: "center", 
+               alignItems: "center", 
+               boxShadow: "0 8px 32px rgba(157, 78, 221, 0.6)", 
+               transition: isDragging ? "none" : "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+               transform: isDragging ? "scale(1.1)" : "scale(1)",
+               zIndex: 10000
+             }}
+             title="Drag to reposition | Click for Notifications"
           >
              💬
           </button>
